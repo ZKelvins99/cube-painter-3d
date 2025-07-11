@@ -6,7 +6,6 @@ bower_components/
 dist/
 build/
 out/
-public/
 
 # 环境变量配置
 .env
