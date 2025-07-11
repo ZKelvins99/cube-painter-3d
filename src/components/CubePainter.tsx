@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 import { CubeGeometry } from '../core/CubeGeometry';
 import { DrawingSystem, DrawingTool } from '../core/DrawingSystem';
-import { UnfoldAnimation, UnfoldMode } from '../core/UnfoldAnimation';
+import { UnfoldAnimation } from '../core/UnfoldAnimation';
+import { UnfoldType } from '../core/CubeUnfoldAlgorithm';
 import { ToolBar } from './ToolBar';
 import { UnfoldSlider } from './UnfoldSlider';
 
@@ -25,8 +26,9 @@ export const CubePainter: React.FC = () => {
         opacity: 1
     });
     const [unfoldProgress, setUnfoldProgress] = useState(0);
-    const [unfoldMode, setUnfoldMode] = useState<UnfoldMode>(UnfoldMode.TYPE_141_CENTER);
+    const [unfoldType, setUnfoldType] = useState<UnfoldType>(UnfoldType.TYPE_141_A);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [showFaceLabels, setShowFaceLabels] = useState(true);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -43,16 +45,16 @@ export const CubePainter: React.FC = () => {
     const initializeScene = () => {
         // 初始化Three.js场景
         sceneRef.current = new THREE.Scene();
-        sceneRef.current.background = new THREE.Color(0xf5f5f5);
+        sceneRef.current.background = new THREE.Color(0xf8f9fa);
 
-        // 设置相机（调整位置以适应展开图）
+        // 设置相机
         cameraRef.current = new THREE.PerspectiveCamera(
             60,
             canvasRef.current!.clientWidth / canvasRef.current!.clientHeight,
             0.1,
             1000
         );
-        cameraRef.current.position.set(0, 0, 12);
+        cameraRef.current.position.set(6, 4, 8);
 
         // 设置渲染器
         rendererRef.current = new THREE.WebGLRenderer({
@@ -69,26 +71,30 @@ export const CubePainter: React.FC = () => {
         // 添加光源
         const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 10, 5);
+        directionalLight.position.set(10, 10, 5);
         directionalLight.castShadow = true;
+
+        // 添加填充光
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        fillLight.position.set(-10, -10, -5);
 
         sceneRef.current.add(ambientLight);
         sceneRef.current.add(directionalLight);
+        sceneRef.current.add(fillLight);
 
-        // 添加网格地面（适应展开图大小）
-        const gridHelper = new THREE.GridHelper(16, 16, 0x888888, 0xcccccc);
+        // 添加网格地面
+        const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0xcccccc);
         gridHelper.position.y = -0.1;
         sceneRef.current.add(gridHelper);
 
         // 初始化六面体
         cubeGeometryRef.current = new CubeGeometry();
-        sceneRef.current.add(cubeGeometryRef.current.getMesh());
 
         // 初始化绘画系统
         drawingSystemRef.current = new DrawingSystem(cubeGeometryRef.current);
 
         // 初始化展开动画
-        unfoldAnimationRef.current = new UnfoldAnimation(cubeGeometryRef.current);
+        unfoldAnimationRef.current = new UnfoldAnimation(cubeGeometryRef.current, 2);
         sceneRef.current.add(unfoldAnimationRef.current.getGroup());
 
         // 设置轨道控制
@@ -97,13 +103,23 @@ export const CubePainter: React.FC = () => {
             rendererRef.current.domElement
         );
         controlsRef.current.enableDamping = true;
-        controlsRef.current.dampingFactor = 0.05;
+        controlsRef.current.dampingFactor = 0.08;
         controlsRef.current.minDistance = 3;
         controlsRef.current.maxDistance = 30;
 
-        // 限制垂直旋转角度
-        controlsRef.current.maxPolarAngle = Math.PI * 0.8;
-        controlsRef.current.minPolarAngle = Math.PI * 0.2;
+        // 设置鼠标控制
+        controlsRef.current.mouseButtons = {
+            LEFT: undefined,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.enableZoom = true;
+
+        // 设置相机目标
+        controlsRef.current.target.set(0, 0, 0);
     };
 
     const setupEventListeners = () => {
@@ -116,23 +132,30 @@ export const CubePainter: React.FC = () => {
         canvas.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('mouseleave', handleMouseUp);
 
-        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-
         window.addEventListener('resize', handleResize);
     };
 
     const handleMouseDown = (event: MouseEvent) => {
         event.preventDefault();
-        if (event.button === 0 && controlsRef.current) {
-            controlsRef.current.enabled = false;
+
+        // 左键用于绘画
+        if (event.button === 0) {
+            if (controlsRef.current) {
+                controlsRef.current.enabled = false;
+            }
+
             setIsDrawing(true);
             drawingSystemRef.current?.startDrawing(
                 event,
                 cameraRef.current!,
                 sceneRef.current!
             );
+        }
+        // 右键用于旋转视角
+        else if (event.button === 2) {
+            if (controlsRef.current) {
+                controlsRef.current.enabled = true;
+            }
         }
     };
 
@@ -149,43 +172,20 @@ export const CubePainter: React.FC = () => {
 
     const handleMouseUp = (event?: MouseEvent) => {
         if (event) event.preventDefault();
+
         if (isDrawing) {
             setIsDrawing(false);
             drawingSystemRef.current?.stopDrawing();
-        }
-        if (controlsRef.current) {
-            controlsRef.current.enabled = true;
-        }
-    };
 
-    const handleTouchStart = (event: TouchEvent) => {
-        event.preventDefault();
-        if (event.touches.length === 1) {
-            const touch = event.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-                clientX: touch.clientX,
-                clientY: touch.clientY,
-                button: 0
-            });
-            handleMouseDown(mouseEvent);
+            if (controlsRef.current) {
+                controlsRef.current.enabled = true;
+                controlsRef.current.mouseButtons = {
+                    LEFT: undefined,
+                    MIDDLE: THREE.MOUSE.DOLLY,
+                    RIGHT: THREE.MOUSE.ROTATE
+                };
+            }
         }
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-        event.preventDefault();
-        if (event.touches.length === 1 && isDrawing) {
-            const touch = event.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            handleMouseMove(mouseEvent);
-        }
-    };
-
-    const handleTouchEnd = (event: TouchEvent) => {
-        event.preventDefault();
-        handleMouseUp();
     };
 
     const handleResize = () => {
@@ -221,9 +221,26 @@ export const CubePainter: React.FC = () => {
         unfoldAnimationRef.current?.setUnfoldProgress(progress);
     };
 
-    const handleUnfoldModeChange = (mode: UnfoldMode) => {
-        setUnfoldMode(mode);
-        unfoldAnimationRef.current?.setUnfoldMode(mode);
+    const handleUnfoldTypeChange = (type: UnfoldType) => {
+        setUnfoldType(type);
+        unfoldAnimationRef.current?.setUnfoldType(type);
+    };
+
+    const handleFaceColorChange = (faceIndex: number, color: string) => {
+        cubeGeometryRef.current?.setFaceColor(faceIndex, color);
+    };
+
+    const handleShowFaceLabelsChange = (show: boolean) => {
+        setShowFaceLabels(show);
+        cubeGeometryRef.current?.setShowFaceLabels(show);
+    };
+
+    const clearFace = (faceIndex: number) => {
+        cubeGeometryRef.current?.clearFace(faceIndex);
+    };
+
+    const getUnfoldTypeName = (type: UnfoldType): string => {
+        return unfoldAnimationRef.current?.getUnfoldTypeName(type) || '';
     };
 
     const cleanup = () => {
@@ -240,8 +257,14 @@ export const CubePainter: React.FC = () => {
             <ToolBar
                 currentTool={currentTool}
                 onToolChange={handleToolChange}
-                unfoldMode={unfoldMode}
-                onUnfoldModeChange={handleUnfoldModeChange}
+                unfoldType={unfoldType}
+                onUnfoldTypeChange={handleUnfoldTypeChange}
+                cubeGeometry={cubeGeometryRef.current}
+                onFaceColorChange={handleFaceColorChange}
+                showFaceLabels={showFaceLabels}
+                onShowFaceLabelsChange={handleShowFaceLabelsChange}
+                onClearFace={clearFace}
+                getUnfoldTypeName={getUnfoldTypeName}
             />
             <div className="canvas-container">
                 <canvas
@@ -250,16 +273,40 @@ export const CubePainter: React.FC = () => {
                 />
                 {isDrawing && (
                     <div className="drawing-indicator">
-                        正在绘画...
+                        <div className="indicator-icon">🎨</div>
+                        <div>正在绘画...</div>
                     </div>
                 )}
-                <div className="mode-indicator">
-                    当前模式: {unfoldMode.replace('_', ' ').toUpperCase()}
+                <div className="controls-info">
+                    <div className="control-item">
+                        <span className="control-icon">🖱️</span>
+                        <span>左键：绘画</span>
+                    </div>
+                    <div className="control-item">
+                        <span className="control-icon">🖱️</span>
+                        <span>右键：旋转视角</span>
+                    </div>
+                    <div className="control-item">
+                        <span className="control-icon">🔄</span>
+                        <span>滚轮：缩放</span>
+                    </div>
+                </div>
+                <div className="unfold-info">
+                    <div className="info-title">展开状态</div>
+                    <div className="info-item">
+                        <span>进度：</span>
+                        <span className="value">{Math.round(unfoldProgress * 100)}%</span>
+                    </div>
+                    <div className="info-item">
+                        <span>模式：</span>
+                        <span className="value">{getUnfoldTypeName(unfoldType)}</span>
+                    </div>
                 </div>
             </div>
             <UnfoldSlider
                 progress={unfoldProgress}
                 onProgressChange={handleUnfoldChange}
+                label={`展开程度 (k=${(unfoldProgress * 100).toFixed(1)}%)`}
             />
         </div>
     );
