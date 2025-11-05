@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "element-plus": "^2.11.7",
     "gsap": "^3.13.0",
     "konva": "^10.0.8",
     "three": "^0.181.0",
@@ -19,6 +20,8 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.8.1",
     "typescript": "~5.9.3",
+    "unplugin-auto-import": "^20.2.0",
+    "unplugin-vue-components": "^30.0.0",
     "vite": "^7.1.7",
     "vue-tsc": "^3.1.0"
   }
