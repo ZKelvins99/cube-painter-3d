@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import DrawingBoard from './DrawingBoard.vue'
@@ -122,15 +122,14 @@ const getCanvasFromStage = (index: number): HTMLCanvasElement | null => {
 }
 
 // Update canvas refs when drawing boards are mounted
-const updateCanvasRefs = () => {
-  setTimeout(() => {
-    for (let i = 0; i < 6; i++) {
-      const canvas = getCanvasFromStage(i)
-      if (canvas) {
-        canvasRefs.value[i] = canvas
-      }
+const updateCanvasRefs = async () => {
+  await nextTick()
+  for (let i = 0; i < 6; i++) {
+    const canvas = getCanvasFromStage(i)
+    if (canvas) {
+      canvasRefs.value[i] = canvas
     }
-  }, 100)
+  }
 }
 
 // Save all faces data
@@ -157,15 +156,14 @@ const loadAllFaces = (facesData: Record<string, string>) => {
   })
 }
 
-onMounted(() => {
-  updateCanvasRefs()
+onMounted(async () => {
+  await updateCanvasRefs()
   
-  // Initialize Three.js after a short delay to ensure canvases are ready
-  setTimeout(() => {
-    if (containerRef.value) {
-      initThreeJS()
-    }
-  }, 200)
+  // Initialize Three.js after canvases are ready
+  await nextTick()
+  if (containerRef.value) {
+    initThreeJS()
+  }
 })
 
 onBeforeUnmount(() => {

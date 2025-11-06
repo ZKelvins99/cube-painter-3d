@@ -1,12 +1,14 @@
 """
 FastAPI main application
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import timedelta
 from typing import List
 from bson import ObjectId
+from bson.errors import InvalidId
 
 from database import connect_to_mongo, close_mongo_connection, get_database
 from models import (
@@ -18,7 +20,18 @@ from auth import (
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
-app = FastAPI(title="Cube Painter 3D API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
+    await connect_to_mongo()
+    yield
+    # Shutdown
+    await close_mongo_connection()
+
+
+app = FastAPI(title="Cube Painter 3D API", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -28,18 +41,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_db_client():
-    """Connect to MongoDB on startup"""
-    await connect_to_mongo()
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    """Close MongoDB connection on shutdown"""
-    await close_mongo_connection()
 
 
 @app.get("/")
@@ -137,7 +138,7 @@ async def get_project(
     
     try:
         project = await db.projects.find_one({"_id": ObjectId(project_id)})
-    except:
+    except InvalidId:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid project ID"
@@ -171,7 +172,7 @@ async def update_project(
     
     try:
         existing_project = await db.projects.find_one({"_id": ObjectId(project_id)})
-    except:
+    except InvalidId:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid project ID"
@@ -242,7 +243,7 @@ async def delete_project(
     
     try:
         existing_project = await db.projects.find_one({"_id": ObjectId(project_id)})
-    except:
+    except InvalidId:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid project ID"
