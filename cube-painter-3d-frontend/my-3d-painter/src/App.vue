@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DrawingBoard from './components/DrawingBoard.vue'
+import MultiCanvas3DViewer from './components/MultiCanvas3DViewer.vue'
 </script>
 
 <template>
@@ -9,7 +9,7 @@ import DrawingBoard from './components/DrawingBoard.vue'
       <p>Interactive 3D Cube Painter</p>
     </header>
     <main class="app-main">
-      <DrawingBoard :width="600" :height="600" />
+      <MultiCanvas3DViewer />
     </main>
   </div>
 </template>
@@ -40,7 +40,7 @@ import DrawingBoard from './components/DrawingBoard.vue'
 }
 
 .app-main {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 </style>

@@ -13,5 +13,6 @@ declare module 'vue' {
   export interface GlobalComponents {
     DrawingBoard: typeof import('./src/components/DrawingBoard.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    MultiCanvas3DViewer: typeof import('./src/components/MultiCanvas3DViewer.vue')['default']
   }
 }
