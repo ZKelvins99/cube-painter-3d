@@ -1,5 +1,10 @@
 import { AppShell } from '@/components/AppShell'
+import { WebGLGuard } from '@/components/WebGLGuard'
 
 export default function App() {
-  return <AppShell />
+  return (
+    <WebGLGuard>
+      <AppShell />
+    </WebGLGuard>
+  )
 }

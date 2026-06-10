@@ -4,9 +4,29 @@ import { SHAPES, type ShapeKey } from '@/editor/shapes'
 import { attachEraserTool } from '@/editor/tools/eraserTool'
 import { attachLineTool } from '@/editor/tools/lineTool'
 import { attachPolylineTool } from '@/editor/tools/polylineTool'
+import { emptyFabricJson } from '@/lib/emptyFaceJson'
 import { FACE_SIZE } from '@/lib/faceCanvas'
 import { useCubeStore } from '@/store/cubeStore'
 import type { EditorTool, FaceId } from '@/types/cube'
+
+async function loadFaceJson(
+  canvas: Canvas,
+  json: object,
+  faceId: FaceId,
+  updateFaceJson: (faceId: FaceId, fabricJson: object) => void,
+  onLoaded?: () => void,
+) {
+  try {
+    await canvas.loadFromJSON(json)
+  } catch {
+    const empty = emptyFabricJson()
+    updateFaceJson(faceId, empty)
+    await canvas.loadFromJSON(empty)
+    alert('该面数据已损坏，已重置为空白。')
+  }
+  canvas.requestRenderAll()
+  onLoaded?.()
+}
 
 function applyToolMode(canvas: Canvas, tool: EditorTool) {
   const isDrawTool = tool === 'line' || tool === 'polyline'
@@ -86,10 +106,14 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     canvas.on('object:removed', persist)
 
     isLoadingRef.current = true
-    void canvas.loadFromJSON(project.faces[initialFace].fabricJson).then(() => {
+    void loadFaceJson(
+      canvas,
+      project.faces[initialFace].fabricJson,
+      initialFace,
+      updateFaceJson,
+      onFaceLoaded,
+    ).finally(() => {
       isLoadingRef.current = false
-      canvas.requestRenderAll()
-      onFaceLoaded?.()
     })
 
     return () => {
@@ -111,10 +135,8 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
 
     isLoadingRef.current = true
     const json = useCubeStore.getState().project.faces[activeFace].fabricJson
-    void canvas.loadFromJSON(json).then(() => {
+    void loadFaceJson(canvas, json, activeFace, updateFaceJson, onFaceLoaded).finally(() => {
       isLoadingRef.current = false
-      canvas.requestRenderAll()
-      onFaceLoaded?.()
     })
   }, [activeFace, updateFaceJson, onFaceLoaded])
 
