@@ -50,7 +50,13 @@ export const useCubeStore = create<CubeState>((set) => ({
         faces: { ...s.project.faces, [faceId]: { faceId, fabricJson } },
       },
     })),
-  loadProject: (project) => set({ project }),
+  loadProject: (project) =>
+    set({
+      project,
+      unfoldType: project.unfoldType,
+      stepFoldIndex: 0,
+      foldProgress: 0,
+    }),
   newProject: (name) =>
     set({ project: createEmptyProject(name), stepFoldIndex: 0, foldProgress: 0 }),
   setStepFoldIndex: (stepFoldIndex) => set({ stepFoldIndex }),

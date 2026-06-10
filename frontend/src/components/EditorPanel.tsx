@@ -23,6 +23,7 @@ interface EditorPanelProps {
 
 export function EditorPanel({ onHistoryReady, onRegisterInsertShape }: EditorPanelProps) {
   const mode = useCubeStore((s) => s.mode)
+  const projectId = useCubeStore((s) => s.project.id)
   const activeFace = useCubeStore((s) => s.activeFace)
   const updateFaceJson = useCubeStore((s) => s.updateFaceJson)
   const [canvas, setCanvas] = useState<Canvas | null>(null)
@@ -66,6 +67,7 @@ export function EditorPanel({ onHistoryReady, onRegisterInsertShape }: EditorPan
       <div className="mt-4 flex flex-1 items-center justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="w-[512px] max-w-full">
           <FabricFaceCanvas
+            key={projectId}
             ref={canvasHandleRef}
             onCanvasReady={setCanvas}
             onFaceLoaded={handleFaceLoaded}
