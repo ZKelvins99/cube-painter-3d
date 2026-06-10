@@ -33,11 +33,18 @@ export interface FacePose3D {
   rotation: [number, number, number]
 }
 
+export interface FoldStep {
+  /** Face whose hinge to its parent rotates; attached sub-panel moves rigidly. */
+  pivotFace: FaceId
+}
+
 export interface UnfoldLayout {
   id: UnfoldType
   name: string
   cells: UnfoldCell[]
-  foldSequence: FaceId[][]
+  /** Face held fixed on the table during folding (per-net anchor). */
+  anchorFace: FaceId
+  foldSteps: FoldStep[]
   cubePoses: Record<FaceId, FacePose3D>
 }
 

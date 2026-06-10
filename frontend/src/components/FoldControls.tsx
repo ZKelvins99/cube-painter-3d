@@ -9,7 +9,7 @@ export function FoldControls() {
   const setMode = useCubeStore((s) => s.setMode)
   const setStepFoldIndex = useCubeStore((s) => s.setStepFoldIndex)
 
-  const stepCount = UNFOLD_LAYOUTS[unfoldType - 1].foldSequence.length
+  const stepCount = UNFOLD_LAYOUTS[unfoldType - 1].foldSteps.length
 
   const handleStepFoldMode = () => {
     setMode('step-fold')

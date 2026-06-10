@@ -13,6 +13,10 @@ function cells(entries: [FaceId, number, number][]): UnfoldCell[] {
   return entries.map(([faceId, gridX, gridY]) => ({ faceId, gridX, gridY }))
 }
 
+function steps(faces: FaceId[]) {
+  return faces.map((pivotFace) => ({ pivotFace }))
+}
+
 export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
   {
     id: 1,
@@ -25,7 +29,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 3, 1],
       ['bottom', 1, 2],
     ]),
-    foldSequence: [['left'], ['right'], ['back'], ['top'], ['bottom']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'back', 'top', 'bottom']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -39,7 +44,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 3, 1],
       ['top', 4, 1],
     ]),
-    foldSequence: [['left'], ['right'], ['bottom'], ['back'], ['top']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'bottom', 'back', 'top']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -53,7 +59,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 1, 3],
       ['right', 2, 3],
     ]),
-    foldSequence: [['left'], ['top'], ['bottom'], ['back'], ['right']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'top', 'bottom', 'back', 'right']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -67,7 +74,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['bottom', 2, 2],
       ['back', 3, 2],
     ]),
-    foldSequence: [['left'], ['right'], ['bottom'], ['back'], ['top']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'bottom', 'back', 'top']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -81,7 +89,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['bottom', 2, 2],
       ['back', 3, 2],
     ]),
-    foldSequence: [['left'], ['top'], ['right'], ['bottom'], ['back']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'top', 'right', 'bottom', 'back']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -95,7 +104,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 3, 1],
       ['bottom', 1, 2],
     ]),
-    foldSequence: [['left'], ['top'], ['right'], ['back'], ['bottom']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'top', 'right', 'back', 'bottom']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -109,7 +119,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 3, 1],
       ['bottom', 0, 2],
     ]),
-    foldSequence: [['top'], ['left'], ['right'], ['back'], ['bottom']],
+    anchorFace: 'front',
+    foldSteps: steps(['top', 'left', 'right', 'back', 'bottom']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -123,7 +134,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['back', 3, 1],
       ['bottom', 2, 2],
     ]),
-    foldSequence: [['left'], ['right'], ['bottom'], ['back'], ['top']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'bottom', 'back', 'top']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -137,7 +149,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['left', 0, 3],
       ['back', 1, 3],
     ]),
-    foldSequence: [['left'], ['right'], ['top'], ['bottom'], ['back']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'top', 'bottom', 'back']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -151,7 +164,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['left', 0, 3],
       ['back', 1, 3],
     ]),
-    foldSequence: [['left'], ['right'], ['top'], ['bottom'], ['back']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'top', 'bottom', 'back']),
     cubePoses: CUBE_POSES,
   },
   {
@@ -165,7 +179,8 @@ export const UNFOLD_LAYOUTS: UnfoldLayout[] = [
       ['bottom', 1, 2],
       ['back', 1, 3],
     ]),
-    foldSequence: [['left'], ['right'], ['bottom'], ['back'], ['top']],
+    anchorFace: 'front',
+    foldSteps: steps(['left', 'right', 'bottom', 'back', 'top']),
     cubePoses: CUBE_POSES,
   },
 ]

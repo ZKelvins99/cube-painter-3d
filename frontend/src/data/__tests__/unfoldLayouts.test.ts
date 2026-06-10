@@ -14,4 +14,12 @@ describe('UNFOLD_LAYOUTS', () => {
       expect(ids.sort()).toEqual([...FACE_IDS].sort())
     }
   })
+
+  it('each layout defines anchorFace and foldSteps', () => {
+    for (const layout of UNFOLD_LAYOUTS) {
+      expect(FACE_IDS).toContain(layout.anchorFace)
+      expect(layout.foldSteps.length).toBeGreaterThan(0)
+      expect(layout.cells.some((c) => c.faceId === layout.anchorFace)).toBe(true)
+    }
+  })
 })

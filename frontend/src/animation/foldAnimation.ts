@@ -27,8 +27,12 @@ function tweenFoldProgress(target: number, duration: number, onComplete?: () => 
   })
 }
 
-export function computeFoldPoses(unfoldType: UnfoldType, foldProgress: number): Record<string, FacePose3D> {
-  return computeHingePoses(unfoldType, foldProgress)
+export function computeFoldPoses(
+  unfoldType: UnfoldType,
+  foldProgress: number,
+  snapToCube = true,
+): Record<string, FacePose3D> {
+  return computeHingePoses(unfoldType, foldProgress, { snapToCube })
 }
 
 export function fastFold(onComplete?: () => void) {
@@ -44,8 +48,8 @@ export function fastUnfold(onComplete?: () => void) {
 export function stepFold(stepIndex: number, onComplete?: () => void) {
   const { unfoldType } = useCubeStore.getState()
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
-  const clamped = Math.max(0, Math.min(stepIndex, layout.foldSequence.length))
-  const target = clamped / layout.foldSequence.length
+  const clamped = Math.max(0, Math.min(stepIndex, layout.foldSteps.length))
+  const target = clamped / layout.foldSteps.length
   tweenFoldProgress(target, 0.6, onComplete)
 }
 

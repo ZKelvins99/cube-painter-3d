@@ -11,15 +11,17 @@ import { useFaceTextures } from '@/scene/useFaceTextures'
 export function CubeMesh() {
   const unfoldType = useCubeStore((s) => s.unfoldType)
   const foldProgress = useCubeStore((s) => s.foldProgress)
+  const mode = useCubeStore((s) => s.mode)
   const setActiveFace = useCubeStore((s) => s.setActiveFace)
   const setHoveredFace3d = useCubeStore((s) => s.setHoveredFace3d)
   const textures = useFaceTextures()
   // Re-render when offscreen canvases update (CanvasTexture.needsUpdate alone may not repaint R3F)
   useCubeStore((s) => s.faceTextureVersion)
 
+  const snapToCube = mode !== 'step-fold'
   const currentPoses = useMemo(
-    () => computeHingePoses(unfoldType, foldProgress),
-    [unfoldType, foldProgress],
+    () => computeHingePoses(unfoldType, foldProgress, { snapToCube }),
+    [unfoldType, foldProgress, snapToCube],
   )
 
   const handleFaceClick = (faceId: FaceId) => (event: ThreeEvent<MouseEvent>) => {

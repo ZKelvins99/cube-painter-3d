@@ -7,6 +7,11 @@ const HALF = 0.5
 const FLAT_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
 const ALIGN_START = 0.82
 
+export type FoldPoseOptions = {
+  /** When true (fast fold), blend toward ideal cube poses near the end. Step-fold should pass false. */
+  snapToCube?: boolean
+}
+
 type EdgeDir = 'east' | 'west' | 'north' | 'south'
 
 export type HingeLink = {
@@ -32,7 +37,7 @@ function neighborDir(parent: UnfoldCell, child: UnfoldCell): EdgeDir | null {
 
 export function buildHingeTree(layout: UnfoldLayout): HingeLink[] {
   const map = cellMap(layout)
-  const root: FaceId = map.has('front') ? 'front' : layout.cells[0].faceId
+  const root = layout.anchorFace
   const visited = new Set<FaceId>([root])
   const links: HingeLink[] = []
   const queue: FaceId[] = [root]
@@ -52,6 +57,28 @@ export function buildHingeTree(layout: UnfoldLayout): HingeLink[] {
 
   resolveHingeSigns(layout, links)
   return links
+}
+
+/** All faces that move rigidly when pivotFace's hinge rotates (pivot + descendants). */
+export function getSubPanelFaces(layout: UnfoldLayout, pivotFace: FaceId): FaceId[] {
+  const links = getLinks(layout.id)
+  const children = new Map<FaceId, FaceId[]>()
+  for (const link of links) {
+    const list = children.get(link.parent) ?? []
+    list.push(link.faceId)
+    children.set(link.parent, list)
+  }
+
+  const panel: FaceId[] = []
+  const queue = [pivotFace]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    panel.push(id)
+    for (const child of children.get(id) ?? []) {
+      queue.push(child)
+    }
+  }
+  return panel
 }
 
 function hingePoint(edge: EdgeDir): THREE.Vector3 {
@@ -125,26 +152,26 @@ function resolveHingeSigns(layout: UnfoldLayout, links: HingeLink[]) {
 }
 
 function hingeProgress(faceId: FaceId, layout: UnfoldLayout, globalT: number): number {
-  const root: FaceId = layout.cells.find((c) => c.faceId === 'front')?.faceId ?? layout.cells[0].faceId
+  const root = layout.anchorFace
   if (faceId === root) return 0
 
-  const seq = layout.foldSequence
-  const total = seq.length
-  const globalStep = globalT * total
+  const stepIndex = layout.foldSteps.findIndex((step) => step.pivotFace === faceId)
+  if (stepIndex < 0) return 0
 
-  for (let i = 0; i < seq.length; i++) {
-    if (seq[i].includes(faceId)) {
-      return Math.min(1, Math.max(0, globalStep - i))
-    }
-  }
-  return globalT
+  const totalSteps = layout.foldSteps.length
+  const globalStep = globalT * totalSteps
+
+  if (globalStep >= stepIndex + 1) return 1
+  if (globalStep <= stepIndex) return 0
+  return globalStep - stepIndex
 }
 
 /** Compute the world-space rotation axis for a hinge edge given the parent face's world quaternion. */
 function hingeWorldAxis(parentWorldQuat: THREE.Quaternion, edge: EdgeDir): THREE.Vector3 {
-  const localAxis = edge === 'east' || edge === 'west'
-    ? new THREE.Vector3(0, 1, 0)
-    : new THREE.Vector3(1, 0, 0)
+  const localAxis =
+    edge === 'east' || edge === 'west'
+      ? new THREE.Vector3(0, 1, 0)
+      : new THREE.Vector3(1, 0, 0)
   return localAxis.applyQuaternion(parentWorldQuat).normalize()
 }
 
@@ -162,7 +189,7 @@ function computeHingePosesInternal(
   links: HingeLink[],
   globalT: number,
 ): Record<FaceId, FacePose3D> {
-  const root: FaceId = layout.cells.find((c) => c.faceId === 'front')?.faceId ?? layout.cells[0].faceId
+  const root = layout.anchorFace
   const linkByChild = new Map(links.map((l) => [l.faceId, l]))
   const faceNodes: Partial<Record<FaceId, THREE.Object3D>> = {}
   const scene = new THREE.Object3D()
@@ -194,16 +221,13 @@ function computeHingePosesInternal(
     hinge.position.copy(hingePoint(link.edge))
     parentFace.add(hinge)
 
-    // Compute quaternion-based rotation around the actual edge direction in world space
     const progress = hingeProgress(faceId, layout, globalT)
     const angle = progress * (Math.PI / 2) * link.sign
     const parentWorldQuat = parentFace.getWorldQuaternion(new THREE.Quaternion())
     const worldAxis = hingeWorldAxis(parentWorldQuat, link.edge)
     const qWorld = new THREE.Quaternion().setFromAxisAngle(worldAxis, angle)
-    // Convert to hinge-local space: local = parentWorld^{-1} * worldTarget
     hinge.quaternion.copy(parentWorldQuat.conjugate().multiply(qWorld))
 
-    // Position child face so its EDGE (not center) sits at the hinge point
     const face = new THREE.Object3D()
     face.position.copy(hingePoint(link.edge).clone().negate())
 
@@ -252,7 +276,12 @@ function getLinks(unfoldType: UnfoldType): HingeLink[] {
   return hingeCache.get(unfoldType)!
 }
 
-export function computeHingePoses(unfoldType: UnfoldType, globalT: number): Record<FaceId, FacePose3D> {
+export function computeHingePoses(
+  unfoldType: UnfoldType,
+  globalT: number,
+  options: FoldPoseOptions = {},
+): Record<FaceId, FacePose3D> {
+  const snapToCube = options.snapToCube ?? true
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
   if (globalT <= 0) return computeFlatPoses(layout)
 
@@ -260,9 +289,11 @@ export function computeHingePoses(unfoldType: UnfoldType, globalT: number): Reco
   const t = Math.min(1, globalT)
   const raw = computeHingePosesInternal(layout, links, t)
 
-  if (t >= 1) return layout.cubePoses
+  if (t >= 1) {
+    return layout.cubePoses
+  }
 
-  if (t > ALIGN_START) {
+  if (snapToCube && t > ALIGN_START) {
     const alpha = (t - ALIGN_START) / (1 - ALIGN_START)
     return blendPoses(raw, layout.cubePoses, alpha)
   }
