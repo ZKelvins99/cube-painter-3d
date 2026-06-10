@@ -31,7 +31,8 @@ export async function renderFabricJsonToCanvas(
 
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, size, size)
-    ctx.drawImage(fabric.getElement(), 0, 0, size, size)
+    const rendered = fabric.toCanvasElement(1, { width: size, height: size })
+    ctx.drawImage(rendered, 0, 0, size, size)
   } finally {
     fabric.dispose()
   }

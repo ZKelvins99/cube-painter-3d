@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MutableRefObject } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, type MutableRefObject } from 'react'
 import { Canvas } from 'fabric'
 import { SHAPES, type ShapeKey } from '@/editor/shapes'
 import { attachEraserTool } from '@/editor/tools/eraserTool'
@@ -13,21 +13,22 @@ async function loadFaceJson(
   canvas: Canvas,
   json: object,
   faceId: FaceId,
-  updateFaceJson: (faceId: FaceId, fabricJson: object) => void,
+  isAlive: () => boolean,
   onLoaded?: () => void,
 ) {
+  if (!isAlive()) return
   try {
     await canvas.loadFromJSON(json)
   } catch (err) {
+    if (!isAlive()) return
     console.error(`[FabricFaceCanvas] loadFromJSON failed for face "${faceId}":`, err)
-    const empty = emptyFabricJson()
-    updateFaceJson(faceId, empty)
     try {
-      await canvas.loadFromJSON(empty)
+      await canvas.loadFromJSON(emptyFabricJson())
     } catch (err2) {
       console.error('[FabricFaceCanvas] fallback empty load also failed:', err2)
     }
   }
+  if (!isAlive()) return
   canvas.requestRenderAll()
   onLoaded?.()
 }
@@ -63,7 +64,6 @@ export interface FabricFaceCanvasProps {
 
 export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCanvasProps>(
   function FabricFaceCanvas({ onCanvasReady, onFaceLoaded, isRestoringRef }, ref) {
-  const [canvasKey] = useState(() => crypto.randomUUID())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<Canvas | null>(null)
   const isLoadingRef = useRef(false)
@@ -139,7 +139,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
       canvas,
       initialFaceJson,
       initialFace,
-      useCubeStore.getState().updateFaceJson,
+      () => !disposed,
       () => {
         if (!disposed) onFaceLoadedRef.current?.()
       },
@@ -161,7 +161,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
       canvas.dispose()
       fabricRef.current = null
     }
-  }, [canvasKey, projectId])
+  }, [])
 
   useEffect(() => {
     const canvas = fabricRef.current
@@ -186,7 +186,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
       canvas,
       faceJson,
       activeFace,
-      useCubeStore.getState().updateFaceJson,
+      () => !disposed,
       () => {
         if (!disposed) onFaceLoadedRef.current?.()
       },
@@ -206,6 +206,33 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     const canvas = fabricRef.current
     if (!canvas) return
 
+    const { activeFace: face } = useCubeStore.getState()
+    activeFaceRef.current = face
+    isLoadingRef.current = true
+    const faceJson = useCubeStore.getState().project.faces[face]?.fabricJson ?? emptyFabricJson()
+    let disposed = false
+    void loadFaceJson(
+      canvas,
+      faceJson,
+      face,
+      () => !disposed,
+      () => {
+        if (!disposed) onFaceLoadedRef.current?.()
+      },
+    ).finally(() => {
+      if (!disposed) {
+        requestAnimationFrame(() => {
+          isLoadingRef.current = false
+        })
+      }
+    })
+    return () => { disposed = true }
+  }, [projectId])
+
+  useEffect(() => {
+    const canvas = fabricRef.current
+    if (!canvas) return
+
     applyToolMode(canvas, tool)
 
     if (tool === 'line') return attachLineTool(canvas)
@@ -215,7 +242,6 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
 
   return (
     <canvas
-      key={canvasKey}
       ref={canvasRef}
       width={FACE_SIZE}
       height={FACE_SIZE}

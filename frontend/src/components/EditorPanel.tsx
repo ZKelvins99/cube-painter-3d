@@ -74,7 +74,6 @@ export function EditorPanel({
       <div className="mt-4 flex flex-1 items-center justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="w-[512px] max-w-full">
           <FabricFaceCanvas
-            key={projectId}
             ref={canvasHandleRef}
             onCanvasReady={setCanvas}
             onFaceLoaded={handleFaceLoaded}

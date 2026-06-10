@@ -81,27 +81,52 @@ export function getSubPanelFaces(layout: UnfoldLayout, pivotFace: FaceId): FaceI
   return panel
 }
 
-function hingePoint(edge: EdgeDir): THREE.Vector3 {
+function hingePointVec(edge: EdgeDir): [number, number, number] {
   switch (edge) {
     case 'east':
-      return new THREE.Vector3(HALF, 0, 0)
+      return [HALF, 0, 0]
     case 'west':
-      return new THREE.Vector3(-HALF, 0, 0)
+      return [-HALF, 0, 0]
     case 'south':
-      return new THREE.Vector3(0, 0, HALF)
+      return [0, 0, HALF]
     case 'north':
-      return new THREE.Vector3(0, 0, -HALF)
+      return [0, 0, -HALF]
   }
 }
 
-function flatCenter(layout: UnfoldLayout, faceId: FaceId): THREE.Vector3 {
+function flatCenterVec(layout: UnfoldLayout, faceId: FaceId): [number, number, number] {
   const xs = layout.cells.map((c) => c.gridX)
   const ys = layout.cells.map((c) => c.gridY)
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2
   const cy = (Math.min(...ys) + Math.max(...ys)) / 2
   const cell = cellMap(layout).get(faceId)!
-  return new THREE.Vector3(cell.gridX - cx, 0, cell.gridY - cy)
+  return [cell.gridX - cx, 0, cell.gridY - cy]
 }
+
+function hingePoint(edge: EdgeDir): THREE.Vector3 {
+  const [x, y, z] = hingePointVec(edge)
+  return new THREE.Vector3(x, y, z)
+}
+
+function flatCenter(layout: UnfoldLayout, faceId: FaceId): THREE.Vector3 {
+  const [x, y, z] = flatCenterVec(layout, faceId)
+  return new THREE.Vector3(x, y, z)
+}
+
+export function hingeAngle(link: HingeLink, layout: UnfoldLayout, globalT: number): number {
+  const progress = hingeProgress(link.faceId, layout, globalT)
+  return progress * (Math.PI / 2) * link.sign
+}
+
+export function hingeRotation(link: HingeLink, layout: UnfoldLayout, globalT: number): [number, number, number] {
+  const angle = hingeAngle(link, layout, globalT)
+  if (link.edge === 'east' || link.edge === 'west') {
+    return [0, angle, 0]
+  }
+  return [angle, 0, 0]
+}
+
+export { hingePointVec, flatCenterVec, getLinks }
 
 /** Explicit flat net — all faces on XZ plane, normals up. */
 export function computeFlatPoses(layout: UnfoldLayout): Record<FaceId, FacePose3D> {
@@ -229,7 +254,7 @@ function computeHingePosesInternal(
     hinge.quaternion.copy(parentWorldQuat.conjugate().multiply(qWorld))
 
     const face = new THREE.Object3D()
-    face.position.copy(hingePoint(link.edge).clone().negate())
+    face.position.copy(hingePoint(link.edge))
 
     hinge.add(face)
     faceNodes[faceId] = face
