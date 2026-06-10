@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Canvas } from 'fabric'
+import { UnfoldGrid } from '@/components/UnfoldGrid'
 import { FabricFaceCanvas, type FabricFaceCanvasHandle } from '@/editor/FabricFaceCanvas'
 import type { ShapeKey } from '@/editor/shapes'
 import { useFabricHistory, type EditorHistoryApi } from '@/editor/useFabricHistory'
@@ -21,6 +22,7 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ onHistoryReady, onRegisterInsertShape }: EditorPanelProps) {
+  const mode = useCubeStore((s) => s.mode)
   const activeFace = useCubeStore((s) => s.activeFace)
   const updateFaceJson = useCubeStore((s) => s.updateFaceJson)
   const [canvas, setCanvas] = useState<Canvas | null>(null)
@@ -48,9 +50,19 @@ export function EditorPanel({ onHistoryReady, onRegisterInsertShape }: EditorPan
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">
-        2D 编辑区 · {FACE_LABELS[activeFace]}
-      </p>
+      {mode === 'unfold-edit' && (
+        <>
+          <UnfoldGrid />
+          <p className="mt-4 text-sm font-medium text-slate-700">
+            正在编辑：<span className="text-[#3B82F6]">{FACE_LABELS[activeFace]}</span> 面
+          </p>
+        </>
+      )}
+      {mode !== 'unfold-edit' && (
+        <p className="text-sm font-medium text-slate-500">
+          2D 编辑区 · {FACE_LABELS[activeFace]}
+        </p>
+      )}
       <div className="mt-4 flex flex-1 items-center justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="w-[512px] max-w-full">
           <FabricFaceCanvas
