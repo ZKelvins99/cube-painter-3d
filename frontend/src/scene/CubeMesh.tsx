@@ -14,6 +14,8 @@ export function CubeMesh() {
   const setActiveFace = useCubeStore((s) => s.setActiveFace)
   const setHoveredFace3d = useCubeStore((s) => s.setHoveredFace3d)
   const textures = useFaceTextures()
+  // Re-render when offscreen canvases update (CanvasTexture.needsUpdate alone may not repaint R3F)
+  useCubeStore((s) => s.faceTextureVersion)
 
   const currentPoses = useMemo(
     () => computeHingePoses(unfoldType, foldProgress),

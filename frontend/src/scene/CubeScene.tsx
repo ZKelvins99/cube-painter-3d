@@ -7,6 +7,7 @@ export function CubeScene() {
     <Canvas
       camera={{ position: [3, 2.5, 3], fov: 45 }}
       gl={{ antialias: true }}
+      frameloop="always"
       style={{ background: 'linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%)' }}
     >
       <ambientLight intensity={1.2} />

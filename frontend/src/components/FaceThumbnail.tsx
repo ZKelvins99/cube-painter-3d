@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { StaticCanvas } from 'fabric'
+import { renderFabricJsonToCanvas } from '@/lib/renderFabricToCanvas'
 
 const THUMB_SIZE = 48
 
@@ -15,21 +15,9 @@ export function FaceThumbnail({ fabricJson, label }: FaceThumbnailProps) {
     const el = canvasRef.current
     if (!el) return
 
-    const canvas = new StaticCanvas(el, {
-      width: THUMB_SIZE,
-      height: THUMB_SIZE,
-      backgroundColor: '#ffffff',
+    void renderFabricJsonToCanvas(fabricJson, el, THUMB_SIZE).catch((err) => {
+      console.error('[FaceThumbnail] render failed:', err)
     })
-
-    void canvas.loadFromJSON(fabricJson).then(() => {
-      canvas.requestRenderAll()
-    }).catch((err) => {
-      console.error('[FaceThumbnail] loadFromJSON failed:', err)
-    })
-
-    return () => {
-      canvas.dispose()
-    }
   }, [fabricJson])
 
   return (
