@@ -1,4 +1,11 @@
 import { useState } from 'react'
+import {
+  SAMPLE_QUESTIONS,
+  copySampleToPractice,
+  findSampleById,
+  isSampleProjectId,
+  sampleToProject,
+} from '@/data/sampleQuestions'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 import { useCubeStore } from '@/store/cubeStore'
 import {
@@ -38,8 +45,23 @@ export function TopBar() {
   const loadProject = useCubeStore((s) => s.loadProject)
   const newProject = useCubeStore((s) => s.newProject)
 
+  const [sampleMenuOpen, setSampleMenuOpen] = useState(false)
   const [openDialogVisible, setOpenDialogVisible] = useState(false)
   const [savedProjects, setSavedProjects] = useState<CubeProject[]>([])
+
+  const activeSample = isSampleProjectId(project.id) ? findSampleById(project.id) : undefined
+
+  const handleLoadSample = (sampleId: string) => {
+    const sample = findSampleById(sampleId)
+    if (!sample) return
+    loadProject(sampleToProject(sample))
+    setSampleMenuOpen(false)
+  }
+
+  const handleCopyToPractice = () => {
+    if (!activeSample) return
+    loadProject(copySampleToPractice(activeSample))
+  }
 
   const handleSave = async () => {
     try {
@@ -99,14 +121,6 @@ export function TopBar() {
     }
   }
 
-  const actionHandlers: Record<string, () => void> = {
-    保存: () => void handleSave(),
-    新建: handleNew,
-    打开: () => void handleOpen(),
-  }
-
-  const actions = ['示例题', '保存', '新建', '打开'] as const
-
   return (
     <>
       <header className="flex shrink-0 flex-col gap-2 border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -128,17 +142,81 @@ export function TopBar() {
                 ))}
               </select>
             </label>
-            {actions.map((label) => (
+
+            <div className="relative">
               <button
-                key={label}
                 type="button"
-                onClick={actionHandlers[label]}
-                disabled={label === '示例题'}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setSampleMenuOpen((open) => !open)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
+                aria-expanded={sampleMenuOpen}
+                aria-haspopup="listbox"
               >
-                {label}
+                示例题
               </button>
-            ))}
+              {sampleMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="关闭示例题菜单"
+                    onClick={() => setSampleMenuOpen(false)}
+                  />
+                  <ul
+                    role="listbox"
+                    className="absolute right-0 z-20 mt-1 min-w-[220px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+                  >
+                    {SAMPLE_QUESTIONS.map((sample) => (
+                      <li key={sample.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={project.id === sample.id}
+                          onClick={() => handleLoadSample(sample.id)}
+                          className="w-full px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#3B82F6]"
+                        >
+                          <span className="font-medium">{sample.title}</span>
+                          <span className="mt-0.5 block text-xs text-slate-500">
+                            {sample.description}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            {activeSample?.readOnly && (
+              <button
+                type="button"
+                onClick={handleCopyToPractice}
+                className="rounded-xl border border-[#3B82F6] bg-[#3B82F6] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#2563EB]"
+              >
+                复制为练习
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={handleNew}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
+            >
+              新建
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleOpen()}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
+            >
+              打开
+            </button>
           </div>
         </div>
         <div className="flex justify-center">

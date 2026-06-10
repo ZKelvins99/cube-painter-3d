@@ -1,0 +1,167 @@
+{
+  "id": "sample-1",
+  "title": "例题1：相对面判断",
+  "description": "观察展开图中各面的标记，判断哪些面在折叠后互为相对面（对面不相邻）。相同标记的面互为相对面。",
+  "unfoldType": 1,
+  "readOnly": true,
+  "faces": {
+    "front": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 216,
+          "width": 80,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 216,
+          "x2": 296,
+          "y2": 296
+        }
+      ]
+    },
+    "back": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 216,
+          "width": 80,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 216,
+          "x2": 296,
+          "y2": 296
+        }
+      ]
+    },
+    "left": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 232,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 232,
+          "y1": 216,
+          "x2": 232,
+          "y2": 296
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 280,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 280,
+          "y1": 216,
+          "x2": 280,
+          "y2": 296
+        }
+      ]
+    },
+    "right": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 232,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 232,
+          "y1": 216,
+          "x2": 232,
+          "y2": 296
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 280,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 280,
+          "y1": 216,
+          "x2": 280,
+          "y2": 296
+        }
+      ]
+    },
+    "top": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 196,
+          "top": 256,
+          "width": 120,
+          "height": 0,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 196,
+          "y1": 256,
+          "x2": 316,
+          "y2": 256
+        }
+      ]
+    },
+    "bottom": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 196,
+          "top": 256,
+          "width": 120,
+          "height": 0,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 196,
+          "y1": 256,
+          "x2": 316,
+          "y2": 256
+        }
+      ]
+    }
+  }
+}

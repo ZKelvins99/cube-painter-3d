@@ -1,0 +1,215 @@
+{
+  "id": "sample-2",
+  "title": "例题2：相邻面关系",
+  "description": "前面标有十字标记。判断折叠后哪些面与前面相邻，哪些面与前面相对（不相邻）。",
+  "unfoldType": 1,
+  "readOnly": true,
+  "faces": {
+    "front": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 256,
+          "width": 80,
+          "height": 0,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 256,
+          "x2": 296,
+          "y2": 256
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 256,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 256,
+          "y1": 216,
+          "x2": 256,
+          "y2": 296
+        }
+      ]
+    },
+    "left": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 216,
+          "width": 80,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 216,
+          "x2": 296,
+          "y2": 296
+        }
+      ]
+    },
+    "right": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 232,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 232,
+          "y1": 216,
+          "x2": 232,
+          "y2": 296
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 280,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 280,
+          "y1": 216,
+          "x2": 280,
+          "y2": 296
+        }
+      ]
+    },
+    "top": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 196,
+          "top": 256,
+          "width": 120,
+          "height": 0,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 196,
+          "y1": 256,
+          "x2": 316,
+          "y2": 256
+        }
+      ]
+    },
+    "bottom": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 296,
+          "width": 80,
+          "height": 0,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 296,
+          "x2": 296,
+          "y2": 296
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 296,
+          "top": 216,
+          "width": 0,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 296,
+          "y1": 216,
+          "x2": 296,
+          "y2": 296
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 216,
+          "top": 216,
+          "width": 80,
+          "height": 80,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 216,
+          "y1": 296,
+          "x2": 296,
+          "y2": 216
+        }
+      ]
+    },
+    "back": {
+      "version": "6.0.0",
+      "objects": [
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 236,
+          "top": 236,
+          "width": 40,
+          "height": 40,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 236,
+          "y1": 236,
+          "x2": 276,
+          "y2": 276
+        },
+        {
+          "type": "Line",
+          "version": "6.0.0",
+          "originX": "left",
+          "originY": "top",
+          "left": 276,
+          "top": 236,
+          "width": 40,
+          "height": 40,
+          "stroke": "#111827",
+          "strokeWidth": 3,
+          "x1": 276,
+          "y1": 236,
+          "x2": 236,
+          "y2": 276
+        }
+      ]
+    }
+  }
+}
