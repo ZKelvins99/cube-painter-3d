@@ -1,5 +1,6 @@
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, type MutableRefObject } from 'react'
 import { Canvas } from 'fabric'
+import { SHAPES, type ShapeKey } from '@/editor/shapes'
 import { attachEraserTool } from '@/editor/tools/eraserTool'
 import { attachLineTool } from '@/editor/tools/lineTool'
 import { attachPolylineTool } from '@/editor/tools/polylineTool'
@@ -9,11 +10,21 @@ import type { EditorTool, FaceId } from '@/types/cube'
 
 function applyToolMode(canvas: Canvas, tool: EditorTool) {
   const isDrawTool = tool === 'line' || tool === 'polyline'
-  canvas.selection = tool === 'select'
+  canvas.selection = tool === 'select' || tool === 'shape'
   canvas.skipTargetFind = isDrawTool
   canvas.defaultCursor = isDrawTool ? 'crosshair' : tool === 'eraser' ? 'pointer' : 'default'
   canvas.hoverCursor =
-    tool === 'select' ? 'move' : tool === 'eraser' ? 'pointer' : isDrawTool ? 'crosshair' : 'default'
+    tool === 'select' || tool === 'shape'
+      ? 'move'
+      : tool === 'eraser'
+        ? 'pointer'
+        : isDrawTool
+          ? 'crosshair'
+          : 'default'
+}
+
+export type FabricFaceCanvasHandle = {
+  insertShape: (key: ShapeKey) => void
 }
 
 export interface FabricFaceCanvasProps {
