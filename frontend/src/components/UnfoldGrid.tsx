@@ -1,16 +1,7 @@
 import { useMemo } from 'react'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 import { useCubeStore } from '@/store/cubeStore'
-import type { FaceId } from '@/types/cube'
-
-const FACE_LABELS: Record<FaceId, string> = {
-  front: '前',
-  back: '后',
-  left: '左',
-  right: '右',
-  top: '上',
-  bottom: '下',
-}
+import { FACE_LABELS } from '@/lib/faceLabels'
 
 const CELL_PX = 56
 
@@ -56,10 +47,10 @@ export function UnfoldGrid() {
               type="button"
               onClick={() => setActiveFace(cell.faceId)}
               className={[
-                'flex aspect-square flex-col items-center justify-center rounded-lg border-2 bg-white text-sm font-medium transition-colors',
+                'flex aspect-square flex-col items-center justify-center rounded-lg border-2 bg-white text-sm font-medium transition-all duration-150 active:scale-[0.97]',
                 isActive
                   ? 'border-[#3B82F6] text-[#3B82F6] shadow-sm'
-                  : 'border-slate-200 text-slate-600 hover:border-slate-300',
+                  : 'border-slate-200 text-slate-600 hover:border-[#3B82F6]/50 hover:bg-blue-50/50 hover:text-[#3B82F6] hover:shadow-sm',
               ].join(' ')}
               style={{
                 gridColumn: cell.gridX - minX + 1,

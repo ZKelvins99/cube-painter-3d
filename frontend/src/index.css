@@ -1,6 +1,29 @@
 @import "tailwindcss";
+
 body {
   margin: 0;
   background: #f8fafc;
   font-family: system-ui, sans-serif;
+}
+
+@layer components {
+  .btn-ghost {
+    @apply rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-all duration-150 hover:border-[#3B82F6] hover:bg-slate-50 hover:text-[#3B82F6] hover:shadow-sm active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply rounded-xl border border-[#3B82F6] bg-[#3B82F6] px-3 py-1.5 text-sm text-white transition-all duration-150 hover:border-[#2563EB] hover:bg-[#2563EB] hover:shadow-sm active:scale-[0.98];
+  }
+
+  .btn-tool {
+    @apply flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-all duration-150 active:scale-[0.98];
+  }
+
+  .btn-tool-active {
+    @apply bg-[#3B82F6] text-white shadow-sm;
+  }
+
+  .btn-tool-inactive {
+    @apply bg-slate-50 text-slate-700 hover:border hover:border-[#3B82F6]/30 hover:bg-slate-100 hover:shadow-sm;
+  }
 }

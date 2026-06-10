@@ -46,11 +46,7 @@ export function ToolBar({ history, onInsertShape }: ToolBarProps) {
             key={id}
             type="button"
             onClick={() => setTool(id)}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors ${
-              active
-                ? 'bg-[#3B82F6] text-white shadow-sm'
-                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-            }`}
+            className={`btn-tool ${active ? 'btn-tool-active' : 'btn-tool-inactive'}`}
           >
             <Icon className="h-4 w-4" />
             {label}
@@ -62,7 +58,7 @@ export function ToolBar({ history, onInsertShape }: ToolBarProps) {
         type="button"
         disabled={!history?.canUndo}
         onClick={() => history?.undo()}
-        className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors enabled:bg-slate-50 enabled:text-slate-700 enabled:hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+        className="btn-tool enabled:btn-tool-inactive disabled:cursor-not-allowed disabled:text-slate-300"
       >
         <Undo2 className="h-4 w-4" />
         撤销
@@ -71,7 +67,7 @@ export function ToolBar({ history, onInsertShape }: ToolBarProps) {
         type="button"
         disabled={!history?.canRedo}
         onClick={() => history?.redo()}
-        className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors enabled:bg-slate-50 enabled:text-slate-700 enabled:hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+        className="btn-tool enabled:btn-tool-inactive disabled:cursor-not-allowed disabled:text-slate-300"
       >
         <Redo2 className="h-4 w-4" />
         重做

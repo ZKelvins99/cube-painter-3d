@@ -11,6 +11,7 @@ interface CubeState {
   project: CubeProject
   stepFoldIndex: number
   foldProgress: number
+  hoveredFace3d: FaceId | null
   setMode: (m: AppMode) => void
   setUnfoldType: (t: UnfoldType) => void
   setActiveFace: (f: FaceId) => void
@@ -20,6 +21,7 @@ interface CubeState {
   newProject: (name?: string) => void
   setStepFoldIndex: (i: number) => void
   setFoldProgress: (p: number) => void
+  setHoveredFace3d: (f: FaceId | null) => void
 }
 
 function createEmptyProject(name = '未命名练习'): CubeProject {
@@ -38,6 +40,7 @@ export const useCubeStore = create<CubeState>((set) => ({
   project: createEmptyProject(),
   stepFoldIndex: 0,
   foldProgress: 0,
+  hoveredFace3d: null,
   setMode: (mode) => set({ mode }),
   setUnfoldType: (unfoldType) => set({ unfoldType, foldProgress: 0, stepFoldIndex: 0 }),
   setActiveFace: (activeFace) => set({ activeFace }),
@@ -61,4 +64,5 @@ export const useCubeStore = create<CubeState>((set) => ({
     set({ project: createEmptyProject(name), stepFoldIndex: 0, foldProgress: 0 }),
   setStepFoldIndex: (stepFoldIndex) => set({ stepFoldIndex }),
   setFoldProgress: (foldProgress) => set({ foldProgress }),
+  setHoveredFace3d: (hoveredFace3d) => set({ hoveredFace3d }),
 }))

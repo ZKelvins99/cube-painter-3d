@@ -133,7 +133,7 @@ export function TopBar() {
               <select
                 value={unfoldType}
                 onChange={(e) => setUnfoldType(Number(e.target.value) as UnfoldType)}
-                className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] focus:border-[#3B82F6] focus:outline-none"
+                className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 transition-all duration-150 hover:border-[#3B82F6] hover:shadow-sm focus:border-[#3B82F6] focus:outline-none"
               >
                 {UNFOLD_LAYOUTS.map((layout) => (
                   <option key={layout.id} value={layout.id}>
@@ -147,7 +147,7 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={() => setSampleMenuOpen((open) => !open)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
+                className="btn-ghost"
                 aria-expanded={sampleMenuOpen}
                 aria-haspopup="listbox"
               >
@@ -172,7 +172,7 @@ export function TopBar() {
                           role="option"
                           aria-selected={project.id === sample.id}
                           onClick={() => handleLoadSample(sample.id)}
-                          className="w-full px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#3B82F6]"
+                          className="w-full px-3 py-2 text-left text-sm text-slate-700 transition-all duration-150 hover:bg-blue-50 hover:text-[#3B82F6]"
                         >
                           <span className="font-medium">{sample.title}</span>
                           <span className="mt-0.5 block text-xs text-slate-500">
@@ -190,31 +190,19 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={handleCopyToPractice}
-                className="rounded-xl border border-[#3B82F6] bg-[#3B82F6] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#2563EB]"
+                className="btn-primary"
               >
                 复制为练习
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
-            >
+            <button type="button" onClick={() => void handleSave()} className="btn-ghost">
               保存
             </button>
-            <button
-              type="button"
-              onClick={handleNew}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
-            >
+            <button type="button" onClick={handleNew} className="btn-ghost">
               新建
             </button>
-            <button
-              type="button"
-              onClick={() => void handleOpen()}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
-            >
+            <button type="button" onClick={() => void handleOpen()} className="btn-ghost">
               打开
             </button>
           </div>
@@ -235,10 +223,10 @@ export function TopBar() {
                   aria-selected={isActive}
                   onClick={() => setMode(id)}
                   className={[
-                    'rounded-lg px-4 py-1.5 text-sm font-medium transition-colors',
+                    'rounded-lg px-4 py-1.5 text-sm font-medium transition-all duration-150 active:scale-[0.98]',
                     isActive
                       ? 'bg-white text-[#3B82F6] shadow-sm'
-                      : 'text-slate-600 hover:text-slate-800',
+                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-800',
                   ].join(' ')}
                 >
                   {label}
@@ -268,7 +256,7 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={() => setOpenDialogVisible(false)}
-                className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg px-2 py-1 text-sm text-slate-500 transition-all duration-150 hover:bg-slate-100 hover:text-slate-700 active:scale-[0.98]"
               >
                 关闭
               </button>
@@ -283,10 +271,10 @@ export function TopBar() {
                       type="button"
                       onClick={() => void handleSelectProject(item.id)}
                       className={[
-                        'flex w-full flex-col rounded-xl border px-3 py-2.5 text-left transition-colors',
+                        'flex w-full flex-col rounded-xl border px-3 py-2.5 text-left transition-all duration-150 active:scale-[0.99]',
                         item.id === project.id
                           ? 'border-[#3B82F6] bg-blue-50'
-                          : 'border-slate-200 hover:border-[#3B82F6] hover:bg-slate-50',
+                          : 'border-slate-200 hover:border-[#3B82F6] hover:bg-blue-50/50 hover:shadow-sm',
                       ].join(' ')}
                     >
                       <span className="text-sm font-medium text-slate-800">{item.name}</span>

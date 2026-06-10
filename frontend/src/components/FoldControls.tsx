@@ -33,24 +33,16 @@ export function FoldControls() {
   return (
     <div className="mt-3 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => fastFold()}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
-        >
+        <button type="button" onClick={() => fastFold()} className="btn-ghost">
           快速折叠
         </button>
-        <button
-          type="button"
-          onClick={() => fastUnfold()}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6]"
-        >
+        <button type="button" onClick={() => fastUnfold()} className="btn-ghost">
           展开
         </button>
         <button
           type="button"
           onClick={handleStepFoldMode}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-[#F97316] hover:text-[#F97316]"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition-all duration-150 hover:border-[#F97316] hover:bg-orange-50 hover:text-[#F97316] hover:shadow-sm active:scale-[0.98]"
         >
           分步折叠
         </button>
@@ -65,7 +57,7 @@ export function FoldControls() {
             type="button"
             onClick={handlePrevStep}
             disabled={stepFoldIndex <= 0}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 transition-all duration-150 hover:border-[#3B82F6] hover:bg-slate-50 hover:text-[#3B82F6] hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             上一步
           </button>
@@ -73,7 +65,7 @@ export function FoldControls() {
             type="button"
             onClick={handleNextStep}
             disabled={stepFoldIndex >= stepCount}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 transition-all duration-150 hover:border-[#3B82F6] hover:bg-slate-50 hover:text-[#3B82F6] hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             下一步
           </button>

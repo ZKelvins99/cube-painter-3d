@@ -5,16 +5,7 @@ import { FabricFaceCanvas, type FabricFaceCanvasHandle } from '@/editor/FabricFa
 import type { ShapeKey } from '@/editor/shapes'
 import { useFabricHistory, type EditorHistoryApi } from '@/editor/useFabricHistory'
 import { useCubeStore } from '@/store/cubeStore'
-import type { FaceId } from '@/types/cube'
-
-const FACE_LABELS: Record<FaceId, string> = {
-  front: '前',
-  back: '后',
-  left: '左',
-  right: '右',
-  top: '上',
-  bottom: '下',
-}
+import { FACE_LABELS } from '@/lib/faceLabels'
 
 interface EditorPanelProps {
   onHistoryReady?: (history: EditorHistoryApi) => void
