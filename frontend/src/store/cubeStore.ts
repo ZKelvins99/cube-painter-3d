@@ -10,6 +10,7 @@ interface CubeState {
   tool: EditorTool
   project: CubeProject
   stepFoldIndex: number
+  foldProgress: number
   setMode: (m: AppMode) => void
   setUnfoldType: (t: UnfoldType) => void
   setActiveFace: (f: FaceId) => void
@@ -18,6 +19,7 @@ interface CubeState {
   loadProject: (p: CubeProject) => void
   newProject: (name?: string) => void
   setStepFoldIndex: (i: number) => void
+  setFoldProgress: (p: number) => void
 }
 
 function createEmptyProject(name = '未命名练习'): CubeProject {
@@ -35,8 +37,9 @@ export const useCubeStore = create<CubeState>((set) => ({
   tool: 'line',
   project: createEmptyProject(),
   stepFoldIndex: 0,
+  foldProgress: 0,
   setMode: (mode) => set({ mode }),
-  setUnfoldType: (unfoldType) => set({ unfoldType }),
+  setUnfoldType: (unfoldType) => set({ unfoldType, foldProgress: 0, stepFoldIndex: 0 }),
   setActiveFace: (activeFace) => set({ activeFace }),
   setTool: (tool) => set({ tool }),
   updateFaceJson: (faceId, fabricJson) =>
@@ -48,6 +51,8 @@ export const useCubeStore = create<CubeState>((set) => ({
       },
     })),
   loadProject: (project) => set({ project }),
-  newProject: (name) => set({ project: createEmptyProject(name), stepFoldIndex: 0 }),
+  newProject: (name) =>
+    set({ project: createEmptyProject(name), stepFoldIndex: 0, foldProgress: 0 }),
   setStepFoldIndex: (stepFoldIndex) => set({ stepFoldIndex }),
+  setFoldProgress: (foldProgress) => set({ foldProgress }),
 }))
