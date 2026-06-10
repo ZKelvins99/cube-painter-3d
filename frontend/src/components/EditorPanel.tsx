@@ -9,30 +9,46 @@ import { FACE_LABELS } from '@/lib/faceLabels'
 
 interface EditorPanelProps {
   onHistoryReady?: (history: EditorHistoryApi) => void
+  onHistoryFlagsChange?: (flags: { canUndo: boolean; canRedo: boolean }) => void
   onRegisterInsertShape?: (insertShape: (key: ShapeKey) => void) => void
 }
 
-export function EditorPanel({ onHistoryReady, onRegisterInsertShape }: EditorPanelProps) {
+export function EditorPanel({
+  onHistoryReady,
+  onHistoryFlagsChange,
+  onRegisterInsertShape,
+}: EditorPanelProps) {
   const mode = useCubeStore((s) => s.mode)
   const projectId = useCubeStore((s) => s.project.id)
   const activeFace = useCubeStore((s) => s.activeFace)
   const updateFaceJson = useCubeStore((s) => s.updateFaceJson)
   const [canvas, setCanvas] = useState<Canvas | null>(null)
   const canvasHandleRef = useRef<FabricFaceCanvasHandle>(null)
+  const historyReadyRef = useRef(false)
 
   const history = useFabricHistory(canvas, {
     onAfterRestore: () => {
       if (canvas) updateFaceJson(activeFace, canvas.toObject())
     },
+    onFlagsChange: onHistoryFlagsChange,
   })
 
+  const historyRef = useRef(history)
+  historyRef.current = history
+
   const handleFaceLoaded = useCallback(() => {
-    history.reset()
-  }, [history])
+    historyRef.current.reset()
+  }, [])
 
   useEffect(() => {
-    onHistoryReady?.(history)
-  }, [history, onHistoryReady, history.canUndo, history.canRedo])
+    if (!canvas || historyReadyRef.current) return
+    historyReadyRef.current = true
+    onHistoryReady?.(historyRef.current)
+  }, [canvas, onHistoryReady])
+
+  useEffect(() => {
+    historyReadyRef.current = false
+  }, [projectId])
 
   useEffect(() => {
     onRegisterInsertShape?.((key) => {

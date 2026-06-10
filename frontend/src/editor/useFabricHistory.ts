@@ -10,6 +10,7 @@ function snapshotKey(json: object) {
 
 interface UseFabricHistoryOptions {
   onAfterRestore?: () => void
+  onFlagsChange?: (flags: { canUndo: boolean; canRedo: boolean }) => void
 }
 
 export function useFabricHistory(canvas: Canvas | null, options?: UseFabricHistoryOptions) {
@@ -17,15 +18,20 @@ export function useFabricHistory(canvas: Canvas | null, options?: UseFabricHisto
   const indexRef = useRef(0)
   const isRestoringRef = useRef(false)
   const onAfterRestoreRef = useRef(options?.onAfterRestore)
+  const onFlagsChangeRef = useRef(options?.onFlagsChange)
   onAfterRestoreRef.current = options?.onAfterRestore
+  onFlagsChangeRef.current = options?.onFlagsChange
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
   const syncFlags = useCallback(() => {
-    setCanUndo(indexRef.current > 0)
-    setCanRedo(indexRef.current < snapshotsRef.current.length - 1)
+    const nextUndo = indexRef.current > 0
+    const nextRedo = indexRef.current < snapshotsRef.current.length - 1
+    setCanUndo(nextUndo)
+    setCanRedo(nextRedo)
+    onFlagsChangeRef.current?.({ canUndo: nextUndo, canRedo: nextRedo })
   }, [])
 
   const pushSnapshot = useCallback(() => {
@@ -100,7 +106,9 @@ export function useFabricHistory(canvas: Canvas | null, options?: UseFabricHisto
       canvas.off('object:removed', onChange)
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [canvas, reset, schedulePush])
+    // Only re-bind when canvas instance changes — reset/schedulePush are stable enough via refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvas])
 
   return { undo, redo, canUndo, canRedo, reset, isRestoringRef }
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { stopFoldAnimation } from '@/animation/foldAnimation'
 import type { AppMode, CubeProject, EditorTool, FaceId, UnfoldType } from '@/types/cube'
 import { FACE_IDS } from '@/types/cube'
 import { emptyFabricJson } from '@/lib/emptyFaceJson'
@@ -42,7 +43,10 @@ export const useCubeStore = create<CubeState>((set) => ({
   foldProgress: 0,
   hoveredFace3d: null,
   setMode: (mode) => set({ mode }),
-  setUnfoldType: (unfoldType) => set({ unfoldType, foldProgress: 0, stepFoldIndex: 0 }),
+  setUnfoldType: (unfoldType) => {
+    stopFoldAnimation()
+    set({ unfoldType, foldProgress: 0, stepFoldIndex: 0 })
+  },
   setActiveFace: (activeFace) => set({ activeFace }),
   setTool: (tool) => set({ tool }),
   updateFaceJson: (faceId, fabricJson) =>
@@ -53,13 +57,17 @@ export const useCubeStore = create<CubeState>((set) => ({
         faces: { ...s.project.faces, [faceId]: { faceId, fabricJson } },
       },
     })),
-  loadProject: (project) =>
+  loadProject: (project) => {
+    stopFoldAnimation()
     set({
       project,
       unfoldType: project.unfoldType,
+      activeFace: 'front',
+      mode: 'unfold-edit',
       stepFoldIndex: 0,
       foldProgress: 0,
-    }),
+    })
+  },
   newProject: (name) =>
     set({ project: createEmptyProject(name), stepFoldIndex: 0, foldProgress: 0 }),
   setStepFoldIndex: (stepFoldIndex) => set({ stepFoldIndex }),

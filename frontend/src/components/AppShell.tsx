@@ -7,11 +7,21 @@ import { ToolBar } from '@/components/ToolBar'
 import { TopBar } from '@/components/TopBar'
 
 export function AppShell() {
-  const [history, setHistory] = useState<EditorHistoryApi | null>(null)
+  const historyRef = useRef<EditorHistoryApi | null>(null)
   const insertShapeRef = useRef<(key: ShapeKey) => void>(() => {})
+  const [historyFlags, setHistoryFlags] = useState({ canUndo: false, canRedo: false })
+
   const handleHistoryReady = useCallback((api: EditorHistoryApi) => {
-    setHistory(api)
+    historyRef.current = api
+    setHistoryFlags({ canUndo: api.canUndo, canRedo: api.canRedo })
   }, [])
+
+  const handleHistoryFlagsChange = useCallback(
+    (flags: { canUndo: boolean; canRedo: boolean }) => {
+      setHistoryFlags(flags)
+    },
+    [],
+  )
 
   return (
     <div className="flex h-screen flex-col bg-[#f8fafc]">
@@ -19,6 +29,7 @@ export function AppShell() {
       <main className="grid min-h-0 flex-1 grid-cols-[3fr_2fr] gap-4 p-4">
         <EditorPanel
           onHistoryReady={handleHistoryReady}
+          onHistoryFlagsChange={handleHistoryFlagsChange}
           onRegisterInsertShape={(fn) => {
             insertShapeRef.current = fn
           }}
@@ -26,7 +37,9 @@ export function AppShell() {
         <PreviewPanel />
       </main>
       <ToolBar
-        history={history}
+        history={historyRef.current}
+        canUndo={historyFlags.canUndo}
+        canRedo={historyFlags.canRedo}
         onInsertShape={(key) => insertShapeRef.current(key)}
       />
     </div>

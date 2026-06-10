@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
-import { computeUnfoldGrid3D, lerpPose } from '@/animation/foldAnimation'
-import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
+import { Edges } from '@react-three/drei'
+import * as THREE from 'three'
+import { computeHingePoses } from '@/animation/foldHierarchy'
 import { FACE_LABELS } from '@/lib/faceLabels'
 import { useCubeStore } from '@/store/cubeStore'
 import { FACE_IDS, type FaceId } from '@/types/cube'
@@ -14,21 +15,9 @@ export function CubeMesh() {
   const setHoveredFace3d = useCubeStore((s) => s.setHoveredFace3d)
   const textures = useFaceTextures()
 
-  const unfoldPoses = useMemo(() => computeUnfoldGrid3D(unfoldType), [unfoldType])
-  const cubePoses = useMemo(
-    () => UNFOLD_LAYOUTS[unfoldType - 1].cubePoses,
-    [unfoldType],
-  )
-
   const currentPoses = useMemo(
-    () =>
-      Object.fromEntries(
-        FACE_IDS.map((faceId) => [
-          faceId,
-          lerpPose(unfoldPoses[faceId], cubePoses[faceId], foldProgress),
-        ]),
-      ),
-    [unfoldPoses, cubePoses, foldProgress],
+    () => computeHingePoses(unfoldType, foldProgress),
+    [unfoldType, foldProgress],
   )
 
   const handleFaceClick = (faceId: FaceId) => (event: ThreeEvent<MouseEvent>) => {
@@ -64,7 +53,12 @@ export function CubeMesh() {
             onPointerOut={handleFacePointerOut}
           >
             <planeGeometry args={[1, 1]} />
-            <meshStandardMaterial map={textures[faceId]} />
+            <meshBasicMaterial
+              map={textures[faceId]}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+            <Edges color="#94a3b8" threshold={15} />
           </mesh>
         )
       })}

@@ -9,6 +9,7 @@ const DEBOUNCE_MS = 16
 
 export function useFaceTextures(): Record<FaceId, THREE.CanvasTexture> {
   const faces = useCubeStore((s) => s.project.faces)
+  const projectId = useCubeStore((s) => s.project.id)
 
   const canvasesRef = useRef<Record<FaceId, HTMLCanvasElement>>(
     {} as Record<FaceId, HTMLCanvasElement>,
@@ -27,9 +28,15 @@ export function useFaceTextures(): Record<FaceId, THREE.CanvasTexture> {
 
     for (const faceId of FACE_IDS) {
       const canvas = createFaceCanvas()
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, FACE_SIZE, FACE_SIZE)
+      }
       nextCanvases[faceId] = canvas
       const texture = new THREE.CanvasTexture(canvas)
       texture.colorSpace = THREE.SRGBColorSpace
+      texture.needsUpdate = true
       nextTextures[faceId] = texture
     }
 
@@ -37,6 +44,10 @@ export function useFaceTextures(): Record<FaceId, THREE.CanvasTexture> {
     texturesRef.current = nextTextures
     return nextTextures
   }, [])
+
+  useEffect(() => {
+    prevJsonRef.current = {}
+  }, [projectId])
 
   useEffect(() => {
     if (!fabricCanvasRef.current) {
@@ -59,16 +70,20 @@ export function useFaceTextures(): Record<FaceId, THREE.CanvasTexture> {
       timeoutsRef.current[faceId] = setTimeout(() => {
         const json = faces[faceId].fabricJson
         renderQueueRef.current = renderQueueRef.current.then(async () => {
-          await fabricCanvas.loadFromJSON(json)
-          fabricCanvas.requestRenderAll()
+          try {
+            await fabricCanvas.loadFromJSON(json)
+            fabricCanvas.requestRenderAll()
 
-          const offscreen = canvasesRef.current[faceId]
-          const ctx = offscreen.getContext('2d')
-          if (!ctx) return
+            const offscreen = canvasesRef.current[faceId]
+            const ctx = offscreen.getContext('2d')
+            if (!ctx) return
 
-          ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE)
-          ctx.drawImage(fabricCanvas.getElement(), 0, 0, FACE_SIZE, FACE_SIZE)
-          texturesRef.current[faceId].needsUpdate = true
+            ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE)
+            ctx.drawImage(fabricCanvas.getElement(), 0, 0, FACE_SIZE, FACE_SIZE)
+            texturesRef.current[faceId].needsUpdate = true
+          } catch (err) {
+            console.error(`[useFaceTextures] render failed for face "${faceId}":`, err)
+          }
         })
       }, DEBOUNCE_MS)
     }

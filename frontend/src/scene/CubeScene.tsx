@@ -4,11 +4,15 @@ import { CubeMesh } from '@/scene/CubeMesh'
 
 export function CubeScene() {
   return (
-    <Canvas camera={{ position: [2, 2, 2], fov: 50 }}>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[3, 5, 2]} intensity={1} />
+    <Canvas
+      camera={{ position: [3, 2.5, 3], fov: 45 }}
+      gl={{ antialias: true }}
+      style={{ background: 'linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%)' }}
+    >
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[4, 6, 3]} intensity={0.8} />
       <CubeMesh />
-      <OrbitControls />
+      <OrbitControls makeDefault minDistance={2} maxDistance={8} />
     </Canvas>
   )
 }

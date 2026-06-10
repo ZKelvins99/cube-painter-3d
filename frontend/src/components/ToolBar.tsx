@@ -24,10 +24,12 @@ const TOOLS: { id: EditorTool; label: string; icon: LucideIcon }[] = [
 
 interface ToolBarProps {
   history?: EditorHistoryApi | null
+  canUndo?: boolean
+  canRedo?: boolean
   onInsertShape: (key: ShapeKey) => void
 }
 
-export function ToolBar({ history, onInsertShape }: ToolBarProps) {
+export function ToolBar({ history, canUndo = false, canRedo = false, onInsertShape }: ToolBarProps) {
   const tool = useCubeStore((s) => s.tool)
   const setTool = useCubeStore((s) => s.setTool)
 
@@ -56,7 +58,7 @@ export function ToolBar({ history, onInsertShape }: ToolBarProps) {
       <span className="mx-2 h-6 w-px bg-slate-200" aria-hidden />
       <button
         type="button"
-        disabled={!history?.canUndo}
+        disabled={!canUndo}
         onClick={() => history?.undo()}
         className="btn-tool enabled:btn-tool-inactive disabled:cursor-not-allowed disabled:text-slate-300"
       >
@@ -65,7 +67,7 @@ export function ToolBar({ history, onInsertShape }: ToolBarProps) {
       </button>
       <button
         type="button"
-        disabled={!history?.canRedo}
+        disabled={!canRedo}
         onClick={() => history?.redo()}
         className="btn-tool enabled:btn-tool-inactive disabled:cursor-not-allowed disabled:text-slate-300"
       >

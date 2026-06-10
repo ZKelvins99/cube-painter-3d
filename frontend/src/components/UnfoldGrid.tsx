@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { FaceThumbnail } from '@/components/FaceThumbnail'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 import { useCubeStore } from '@/store/cubeStore'
 import { FACE_LABELS } from '@/lib/faceLabels'
@@ -8,6 +9,7 @@ const CELL_PX = 56
 export function UnfoldGrid() {
   const unfoldType = useCubeStore((s) => s.unfoldType)
   const activeFace = useCubeStore((s) => s.activeFace)
+  const faces = useCubeStore((s) => s.project.faces)
   const setActiveFace = useCubeStore((s) => s.setActiveFace)
 
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
@@ -41,25 +43,27 @@ export function UnfoldGrid() {
       >
         {layout.cells.map((cell) => {
           const isActive = cell.faceId === activeFace
+          const label = FACE_LABELS[cell.faceId]
           return (
             <button
               key={cell.faceId}
               type="button"
               onClick={() => setActiveFace(cell.faceId)}
               className={[
-                'flex aspect-square flex-col items-center justify-center rounded-lg border-2 bg-white text-sm font-medium transition-all duration-150 active:scale-[0.97]',
+                'flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg border-2 bg-white p-0.5 transition-all duration-150 active:scale-[0.97]',
                 isActive
-                  ? 'border-[#3B82F6] text-[#3B82F6] shadow-sm'
-                  : 'border-slate-200 text-slate-600 hover:border-[#3B82F6]/50 hover:bg-blue-50/50 hover:text-[#3B82F6] hover:shadow-sm',
+                  ? 'border-[#3B82F6] shadow-sm ring-1 ring-[#3B82F6]/30'
+                  : 'border-slate-200 hover:border-[#3B82F6]/50 hover:bg-blue-50/50 hover:shadow-sm',
               ].join(' ')}
               style={{
                 gridColumn: cell.gridX - minX + 1,
                 gridRow: cell.gridY - minY + 1,
               }}
               aria-pressed={isActive}
-              aria-label={`${FACE_LABELS[cell.faceId]}面`}
+              aria-label={`${label}面`}
+              title={label}
             >
-              {FACE_LABELS[cell.faceId]}
+              <FaceThumbnail fabricJson={faces[cell.faceId].fabricJson} label={label} />
             </button>
           )
         })}

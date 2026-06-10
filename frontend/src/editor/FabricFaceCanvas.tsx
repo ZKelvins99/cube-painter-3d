@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, type MutableRefObject } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MutableRefObject } from 'react'
 import { Canvas } from 'fabric'
 import { SHAPES, type ShapeKey } from '@/editor/shapes'
 import { attachEraserTool } from '@/editor/tools/eraserTool'
@@ -18,11 +18,15 @@ async function loadFaceJson(
 ) {
   try {
     await canvas.loadFromJSON(json)
-  } catch {
+  } catch (err) {
+    console.error(`[FabricFaceCanvas] loadFromJSON failed for face "${faceId}":`, err)
     const empty = emptyFabricJson()
     updateFaceJson(faceId, empty)
-    await canvas.loadFromJSON(empty)
-    alert('该面数据已损坏，已重置为空白。')
+    try {
+      await canvas.loadFromJSON(empty)
+    } catch (err2) {
+      console.error('[FabricFaceCanvas] fallback empty load also failed:', err2)
+    }
   }
   canvas.requestRenderAll()
   onLoaded?.()
@@ -43,6 +47,10 @@ function applyToolMode(canvas: Canvas, tool: EditorTool) {
           : 'default'
 }
 
+function jsonEqual(a: object, b: object): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 export type FabricFaceCanvasHandle = {
   insertShape: (key: ShapeKey) => void
 }
@@ -55,14 +63,21 @@ export interface FabricFaceCanvasProps {
 
 export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCanvasProps>(
   function FabricFaceCanvas({ onCanvasReady, onFaceLoaded, isRestoringRef }, ref) {
+  const [canvasKey] = useState(() => crypto.randomUUID())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<Canvas | null>(null)
   const isLoadingRef = useRef(false)
   const activeFaceRef = useRef<FaceId>('front')
+  const onCanvasReadyRef = useRef(onCanvasReady)
+  const onFaceLoadedRef = useRef(onFaceLoaded)
+  const isRestoringRefStable = isRestoringRef
+
+  onCanvasReadyRef.current = onCanvasReady
+  onFaceLoadedRef.current = onFaceLoaded
 
   const activeFace = useCubeStore((s) => s.activeFace)
   const tool = useCubeStore((s) => s.tool)
-  const updateFaceJson = useCubeStore((s) => s.updateFaceJson)
+  const projectId = useCubeStore((s) => s.project.id)
 
   useImperativeHandle(
     ref,
@@ -83,13 +98,19 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     const el = canvasRef.current
     if (!el) return
 
-    const canvas = new Canvas(el, {
-      width: FACE_SIZE,
-      height: FACE_SIZE,
-      backgroundColor: '#ffffff',
-    })
+    let canvas: Canvas
+    try {
+      canvas = new Canvas(el, {
+        width: FACE_SIZE,
+        height: FACE_SIZE,
+        backgroundColor: '#ffffff',
+      })
+    } catch (err) {
+      console.error('[FabricFaceCanvas] Canvas creation failed:', err)
+      return
+    }
     fabricRef.current = canvas
-    onCanvasReady?.(canvas)
+    onCanvasReadyRef.current?.(canvas)
 
     const { activeFace: initialFace, tool: initialTool, project } =
       useCubeStore.getState()
@@ -97,31 +118,50 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     applyToolMode(canvas, initialTool)
 
     const persist = () => {
-      if (isLoadingRef.current || isRestoringRef?.current) return
-      updateFaceJson(activeFaceRef.current, canvas.toObject())
+      if (isLoadingRef.current || isRestoringRefStable?.current) return
+      const faceId = activeFaceRef.current
+      const faceData = useCubeStore.getState().project.faces[faceId]
+      if (!faceData) return
+      const json = canvas.toObject()
+      if (jsonEqual(faceData.fabricJson, json)) return
+      useCubeStore.getState().updateFaceJson(faceId, json)
     }
 
     canvas.on('object:added', persist)
     canvas.on('object:modified', persist)
     canvas.on('object:removed', persist)
 
+    const initialFaceJson = project.faces[initialFace]?.fabricJson ?? emptyFabricJson()
+
+    let disposed = false
     isLoadingRef.current = true
     void loadFaceJson(
       canvas,
-      project.faces[initialFace].fabricJson,
+      initialFaceJson,
       initialFace,
-      updateFaceJson,
-      onFaceLoaded,
-    ).finally(() => {
-      isLoadingRef.current = false
+      useCubeStore.getState().updateFaceJson,
+      () => {
+        if (!disposed) onFaceLoadedRef.current?.()
+      },
+    ).catch((err) => {
+      if (!disposed) console.error('[FabricFaceCanvas] initial face load failed:', err)
+    }).finally(() => {
+      if (!disposed) {
+        requestAnimationFrame(() => {
+          isLoadingRef.current = false
+        })
+      }
     })
 
     return () => {
-      updateFaceJson(activeFaceRef.current, canvas.toObject())
+      disposed = true
+      canvas.off('object:added', persist)
+      canvas.off('object:modified', persist)
+      canvas.off('object:removed', persist)
       canvas.dispose()
       fabricRef.current = null
     }
-  }, [updateFaceJson, onCanvasReady, onFaceLoaded, isRestoringRef])
+  }, [canvasKey, projectId])
 
   useEffect(() => {
     const canvas = fabricRef.current
@@ -130,15 +170,37 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     const prevFace = activeFaceRef.current
     if (prevFace === activeFace) return
 
-    updateFaceJson(prevFace, canvas.toObject())
+    if (!isLoadingRef.current) {
+      const json = canvas.toObject()
+      const prevFaceData = useCubeStore.getState().project.faces[prevFace]
+      if (prevFaceData && !jsonEqual(prevFaceData.fabricJson, json)) {
+        useCubeStore.getState().updateFaceJson(prevFace, json)
+      }
+    }
     activeFaceRef.current = activeFace
 
     isLoadingRef.current = true
-    const json = useCubeStore.getState().project.faces[activeFace].fabricJson
-    void loadFaceJson(canvas, json, activeFace, updateFaceJson, onFaceLoaded).finally(() => {
-      isLoadingRef.current = false
+    const faceJson = useCubeStore.getState().project.faces[activeFace]?.fabricJson ?? emptyFabricJson()
+    let disposed = false
+    void loadFaceJson(
+      canvas,
+      faceJson,
+      activeFace,
+      useCubeStore.getState().updateFaceJson,
+      () => {
+        if (!disposed) onFaceLoadedRef.current?.()
+      },
+    ).catch((err) => {
+      if (!disposed) console.error(`[FabricFaceCanvas] face switch to "${activeFace}" failed:`, err)
+    }).finally(() => {
+      if (!disposed) {
+        requestAnimationFrame(() => {
+          isLoadingRef.current = false
+        })
+      }
     })
-  }, [activeFace, updateFaceJson, onFaceLoaded])
+    return () => { disposed = true }
+  }, [activeFace])
 
   useEffect(() => {
     const canvas = fabricRef.current
@@ -153,6 +215,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
 
   return (
     <canvas
+      key={canvasKey}
       ref={canvasRef}
       width={FACE_SIZE}
       height={FACE_SIZE}

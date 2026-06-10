@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 function hasWebGL(): boolean {
   try {
@@ -14,13 +14,7 @@ function hasWebGL(): boolean {
 }
 
 export function WebGLGuard({ children }: { children: ReactNode }) {
-  const [supported, setSupported] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setSupported(hasWebGL())
-  }, [])
-
-  if (supported === null) return null
+  const [supported] = useState(() => hasWebGL())
 
   if (!supported) {
     return (
