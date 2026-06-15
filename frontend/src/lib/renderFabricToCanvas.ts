@@ -16,14 +16,18 @@ export async function renderFabricJsonToCanvas(
     width: size,
     height: size,
     backgroundColor: '#ffffff',
+    renderOnAddRemove: false,
   })
 
   try {
+    const payload =
+      typeof fabricJson === 'object' && fabricJson !== null ? fabricJson : emptyFabricJson()
     try {
-      await fabric.loadFromJSON(fabricJson)
+      await fabric.loadFromJSON(payload)
     } catch {
       await fabric.loadFromJSON(emptyFabricJson())
     }
+    fabric.backgroundColor = '#ffffff'
     fabric.requestRenderAll()
 
     const ctx = target.getContext('2d')
@@ -36,4 +40,8 @@ export async function renderFabricJsonToCanvas(
   } finally {
     fabric.dispose()
   }
+}
+
+export function faceJsonFingerprint(faces: Record<string, { fabricJson: object }>, faceId: string): string {
+  return JSON.stringify(faces[faceId]?.fabricJson ?? emptyFabricJson())
 }

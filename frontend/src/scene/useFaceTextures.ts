@@ -1,91 +1,78 @@
-import { useEffect, useMemo, useRef } from 'react'
-import * as THREE from 'three'
-import { createFaceCanvas, FACE_SIZE } from '@/lib/faceCanvas'
-import { renderFabricJsonToCanvas } from '@/lib/renderFabricToCanvas'
+import { useEffect, useRef, useState } from 'react'
+import { createFaceCanvas } from '@/lib/faceCanvas'
+import { faceJsonFingerprint, renderFabricJsonToCanvas } from '@/lib/renderFabricToCanvas'
 import { useCubeStore } from '@/store/cubeStore'
 import { FACE_IDS, type FaceId } from '@/types/cube'
 
-const DEBOUNCE_MS = 16
+function createInitialCanvases(): Record<FaceId, HTMLCanvasElement> {
+  const canvases = {} as Record<FaceId, HTMLCanvasElement>
+  for (const faceId of FACE_IDS) {
+    canvases[faceId] = createFaceCanvas()
+  }
+  return canvases
+}
 
-export function useFaceTextures(): Record<FaceId, THREE.CanvasTexture> {
-  const faces = useCubeStore((s) => s.project.faces)
+export function useFaceTextures(): {
+  canvases: Record<FaceId, HTMLCanvasElement>
+  version: number
+} {
   const projectId = useCubeStore((s) => s.project.id)
-  const bumpFaceTextures = useCubeStore((s) => s.bumpFaceTextures)
+  const version = useCubeStore((s) => s.faceTextureVersion)
+  const facesFingerprint = useCubeStore((s) =>
+    FACE_IDS.map((id) => JSON.stringify(s.project.faces[id].fabricJson)).join('\0'),
+  )
 
-  const canvasesRef = useRef<Record<FaceId, HTMLCanvasElement>>(
-    {} as Record<FaceId, HTMLCanvasElement>,
-  )
-  const texturesRef = useRef<Record<FaceId, THREE.CanvasTexture>>(
-    {} as Record<FaceId, THREE.CanvasTexture>,
-  )
-  const timeoutsRef = useRef<Partial<Record<FaceId, ReturnType<typeof setTimeout>>>>({})
   const prevJsonRef = useRef<Partial<Record<FaceId, string>>>({})
-  const renderQueueRef = useRef(Promise.resolve())
-  const immediateRenderRef = useRef(true)
-
-  const textures = useMemo(() => {
-    const nextCanvases = {} as Record<FaceId, HTMLCanvasElement>
-    const nextTextures = {} as Record<FaceId, THREE.CanvasTexture>
-
-    for (const faceId of FACE_IDS) {
-      const canvas = createFaceCanvas()
-      const texture = new THREE.CanvasTexture(canvas)
-      texture.colorSpace = THREE.SRGBColorSpace
-      texture.flipY = false
-      texture.needsUpdate = true
-      nextCanvases[faceId] = canvas
-      nextTextures[faceId] = texture
-    }
-
-    canvasesRef.current = nextCanvases
-    texturesRef.current = nextTextures
-    return nextTextures
-  }, [])
+  const syncGenerationRef = useRef(0)
+  const [canvases, setCanvases] = useState(createInitialCanvases)
+  const canvasesRef = useRef(canvases)
+  canvasesRef.current = canvases
 
   useEffect(() => {
     prevJsonRef.current = {}
-    immediateRenderRef.current = true
   }, [projectId])
 
   useEffect(() => {
-    const delay = immediateRenderRef.current ? 0 : DEBOUNCE_MS
-    immediateRenderRef.current = false
+    const generation = ++syncGenerationRef.current
+    let cancelled = false
 
-    for (const faceId of FACE_IDS) {
-      const jsonStr = JSON.stringify(faces[faceId].fabricJson)
-      if (prevJsonRef.current[faceId] === jsonStr) continue
-      prevJsonRef.current[faceId] = jsonStr
+    async function syncAll() {
+      const faces = useCubeStore.getState().project.faces
+      let updated = false
 
-      clearTimeout(timeoutsRef.current[faceId])
-      timeoutsRef.current[faceId] = setTimeout(() => {
-        const json = faces[faceId].fabricJson
-        renderQueueRef.current = renderQueueRef.current.then(async () => {
-          try {
-            const offscreen = canvasesRef.current[faceId]
-            await renderFabricJsonToCanvas(json, offscreen, FACE_SIZE)
-            texturesRef.current[faceId].needsUpdate = true
-            bumpFaceTextures()
-          } catch (err) {
-            console.error(`[useFaceTextures] render failed for face "${faceId}":`, err)
-          }
-        })
-      }, delay)
-    }
-
-    return () => {
       for (const faceId of FACE_IDS) {
-        clearTimeout(timeoutsRef.current[faceId])
+        if (cancelled || generation !== syncGenerationRef.current) return
+
+        const jsonKey = faceJsonFingerprint(faces, faceId)
+        if (prevJsonRef.current[faceId] === jsonKey) continue
+
+        try {
+          await renderFabricJsonToCanvas(faces[faceId].fabricJson, canvasesRef.current[faceId])
+        } catch (err) {
+          console.error(`[useFaceTextures] render failed for ${faceId}:`, err)
+          continue
+        }
+
+        if (cancelled || generation !== syncGenerationRef.current) return
+
+        prevJsonRef.current[faceId] = jsonKey
+        updated = true
+      }
+
+      if (updated && !cancelled && generation === syncGenerationRef.current) {
+        setCanvases({ ...canvasesRef.current })
+        useCubeStore.getState().bumpFaceTextures()
       }
     }
-  }, [faces, bumpFaceTextures])
 
-  useEffect(() => {
+    void syncAll()
     return () => {
-      for (const faceId of FACE_IDS) {
-        texturesRef.current[faceId]?.dispose()
-      }
+      cancelled = true
     }
-  }, [])
+  }, [facesFingerprint, projectId])
 
-  return textures
+  return {
+    canvases,
+    version,
+  }
 }

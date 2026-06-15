@@ -1,10 +1,12 @@
 import { FoldControls } from '@/components/FoldControls'
 import { FACE_LABELS } from '@/lib/faceLabels'
 import { CubeScene } from '@/scene/CubeScene'
+import { useFaceTextures } from '@/scene/useFaceTextures'
 import { useCubeStore } from '@/store/cubeStore'
 
 export function PreviewPanel() {
   const hoveredFace3d = useCubeStore((s) => s.hoveredFace3d)
+  const { canvases, version } = useFaceTextures()
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm">
@@ -19,7 +21,7 @@ export function PreviewPanel() {
             {FACE_LABELS[hoveredFace3d]}面
           </div>
         )}
-        <CubeScene />
+        <CubeScene canvases={canvases} textureVersion={version} />
       </div>
     </div>
   )

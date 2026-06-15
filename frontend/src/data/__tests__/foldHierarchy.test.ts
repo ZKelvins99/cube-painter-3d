@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeHingePoses, getSubPanelFaces } from '@/animation/foldHierarchy'
+import { buildHingeTree, computeFlatPoses, computeHingePoses, computeHingePosesWithLinks, getSubPanelFaces } from '@/animation/foldHierarchy'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 import { FACE_IDS } from '@/types/cube'
 
@@ -23,6 +23,21 @@ describe('computeHingePoses', () => {
     }
   })
 
+  it('hinge hierarchy at rest stays close to flat net for all layouts', () => {
+    for (const layout of UNFOLD_LAYOUTS) {
+      const flat = computeFlatPoses(layout)
+      const hinge = computeHingePoses(layout.id, 1e-10, { snapToCube: false })
+      for (const faceId of FACE_IDS) {
+        const d = Math.hypot(
+          flat[faceId].position[0] - hinge[faceId].position[0],
+          flat[faceId].position[1] - hinge[faceId].position[1],
+          flat[faceId].position[2] - hinge[faceId].position[2],
+        )
+        expect(d).toBeLessThan(0.05)
+      }
+    }
+  })
+
   it('step-fold mid progress does not snap-blend toward cube poses', () => {
     const mid = computeHingePoses(1, 0.9, { snapToCube: false })
     const snapped = computeHingePoses(1, 0.9, { snapToCube: true })
@@ -32,6 +47,24 @@ describe('computeHingePoses', () => {
       mid.front.position[2] - snapped.front.position[2],
     )
     expect(midDist).toBeGreaterThan(0.001)
+  })
+
+  it('T layout 1 step-fold at 4/5 folds walls upward and top onto the box', () => {
+    const layout = UNFOLD_LAYOUTS[0]
+    const links = buildHingeTree(layout)
+    const signs = Object.fromEntries(links.map((l) => [l.faceId, l.sign]))
+    expect(signs).toEqual({
+      top: 1,
+      left: 1,
+      right: -1,
+      bottom: 1,
+      back: -1,
+    })
+
+    const mid = computeHingePosesWithLinks(layout, links, 0.8)
+    expect(mid.left.position[1]).toBeGreaterThan(0.25)
+    expect(mid.right.position[1]).toBeGreaterThan(0.25)
+    expect(mid.top.position[1]).toBeGreaterThan(0.25)
   })
 })
 
