@@ -1,11 +1,34 @@
+/**
+ * Cube fold hierarchy — physically-correct rigid-hinge folding.
+ *
+ * MODEL: "Vertical-direct net".
+ *  - The flat net stands in a VERTICAL plane facing the camera (normal +Z).
+ *  - The anchor face (always `front`) is pinned to its final canonical cube pose
+ *    from t=0 onward: position [0,0,0.5], rotation identity (normal +Z). It never moves.
+ *  - Every other face is a rigid panel hinged to its parent along their shared grid
+ *    edge. Each hinge rotates exactly +/-90° about the real physical shared edge.
+ *  - At t=1 the pure hinge geometry lands EXACTLY on `layout.cubePoses` — no snapping,
+ *    no blending, no presentation transform. The fold is fully continuous.
+ *
+ * Sign resolution is ANALYTICAL (not brute-force): for each child the correct fold
+ * direction is the unique +/-90° rotation about its world hinge axis whose resulting
+ * face normal matches CUBE_FACE_NORMALS[child]. Computed in BFS order so each parent's
+ * folded world quaternion is known before its children are resolved.
+ *
+ * Coordinate convention (vertical net):
+ *  - gridX  -> world X   (left/right)
+ *  - gridY  -> world -Y  (grid rows go DOWN, world Y goes UP)
+ *  - flat plane lives at world Z = 0.5 (coincident with the front face plane)
+ *  - all flat faces have rotation [0,0,0] (normal +Z, facing the camera)
+ */
+
 import * as THREE from 'three'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 import type { FaceId, FacePose3D, UnfoldCell, UnfoldLayout, UnfoldType } from '@/types/cube'
 import { FACE_IDS } from '@/types/cube'
 
 const HALF = 0.5
-const FLAT_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
-const ALIGN_START = 0.82
+const HALF_PI = Math.PI / 2
 
 /** Target outward face normals once the net is fully folded into a cube (world space). */
 const CUBE_FACE_NORMALS: Record<FaceId, THREE.Vector3> = {
@@ -18,7 +41,11 @@ const CUBE_FACE_NORMALS: Record<FaceId, THREE.Vector3> = {
 }
 
 export type FoldPoseOptions = {
-  /** When true (fast fold), blend toward ideal cube poses near the end. Step-fold should pass false. */
+  /**
+   * Kept for API compatibility only. In the physical fold model there is nothing to
+   * snap — t=1 already lands exactly on cubePoses via pure hinge geometry — so this
+   * flag is now a no-op. CubeMesh/store/animation keep passing it; it is ignored.
+   */
   snapToCube?: boolean
 }
 
@@ -30,6 +57,10 @@ export type HingeLink = {
   edge: EdgeDir
   sign: number
 }
+
+// ---------------------------------------------------------------------------
+// Grid helpers
+// ---------------------------------------------------------------------------
 
 function cellMap(layout: UnfoldLayout): Map<FaceId, UnfoldCell> {
   return new Map(layout.cells.map((c) => [c.faceId, c]))
@@ -45,23 +76,17 @@ function neighborDir(parent: UnfoldCell, child: UnfoldCell): EdgeDir | null {
   return null
 }
 
+// ---------------------------------------------------------------------------
+// Hinge tree (BFS spanning tree rooted at the anchor face)
+// ---------------------------------------------------------------------------
+
 export function buildHingeTree(layout: UnfoldLayout): HingeLink[] {
   const links = buildHingeTreeRaw(layout)
-  resolveHingeSigns(layout, links)
+  resolveHingeSignsAnalytical(layout, links)
   return links
 }
 
-/** @internal Used by tests to evaluate custom hinge signs. */
-export function computeHingePosesWithLinks(
-  layout: UnfoldLayout,
-  links: HingeLink[],
-  globalT: number,
-): Record<FaceId, FacePose3D> {
-  if (globalT <= 0) return computeFlatPoses(layout)
-  return computeHingePosesInternal(layout, links, Math.min(1, globalT))
-}
-
-/** @internal Used by tests to evaluate custom hinge signs. */
+/** @internal Raw BFS tree with signs left at the default (+1). Used by tests. */
 export function buildHingeTreeRaw(layout: UnfoldLayout): HingeLink[] {
   const map = cellMap(layout)
   const root = layout.anchorFace
@@ -82,6 +107,8 @@ export function buildHingeTreeRaw(layout: UnfoldLayout): HingeLink[] {
     }
   }
 
+  // links are emitted in BFS order (each parent before its children), which is exactly
+  // the topological order the analytical sign resolver needs.
   return links
 }
 
@@ -107,6 +134,11 @@ export function getSubPanelFaces(layout: UnfoldLayout, pivotFace: FaceId): FaceI
   return panel
 }
 
+// ---------------------------------------------------------------------------
+// Geometry helpers (local face space — every face is a 1x1 quad in local XY)
+// ---------------------------------------------------------------------------
+
+/** Hinge-point offset of an edge midpoint from the parent face center (local space). */
 function hingePointVec(edge: EdgeDir): [number, number, number] {
   switch (edge) {
     case 'east':
@@ -120,13 +152,16 @@ function hingePointVec(edge: EdgeDir): [number, number, number] {
   }
 }
 
-function flatCenterVec(layout: UnfoldLayout, faceId: FaceId): [number, number, number] {
-  const xs = layout.cells.map((c) => c.gridX)
-  const ys = layout.cells.map((c) => c.gridY)
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2
-  const cell = cellMap(layout).get(faceId)!
-  return [cell.gridX - cx, 0, cell.gridY - cy]
+/**
+ * Tangent direction of the shared edge in the parent's LOCAL space. For these
+ * axis-aligned grid edges the edge tangent IS the rotation axis (a panel folds by
+ * rotating about the line of its shared edge): east/west edges run along local Y,
+ * north/south edges run along local X.
+ */
+function hingeLocalAxis(edge: EdgeDir): THREE.Vector3 {
+  return edge === 'east' || edge === 'west'
+    ? new THREE.Vector3(0, 1, 0)
+    : new THREE.Vector3(1, 0, 0)
 }
 
 function hingePoint(edge: EdgeDir): THREE.Vector3 {
@@ -134,16 +169,48 @@ function hingePoint(edge: EdgeDir): THREE.Vector3 {
   return new THREE.Vector3(x, y, z)
 }
 
+/**
+ * Flat position of a face in the vertical net, expressed relative to the anchor face's
+ * grid cell so the anchor lands exactly on the front cube plane ([0,0,0.5]).
+ *  gridX -> world X,  gridY -> world -Y (rows go down, world Y goes up),  Z = 0.5.
+ */
+function flatCenterVec(layout: UnfoldLayout, faceId: FaceId): [number, number, number] {
+  const map = cellMap(layout)
+  const anchor = map.get(layout.anchorFace)!
+  const cell = map.get(faceId)!
+  return [cell.gridX - anchor.gridX, anchor.gridY - cell.gridY, HALF]
+}
+
 function flatCenter(layout: UnfoldLayout, faceId: FaceId): THREE.Vector3 {
   const [x, y, z] = flatCenterVec(layout, faceId)
   return new THREE.Vector3(x, y, z)
 }
 
-export function hingeAngle(link: HingeLink, layout: UnfoldLayout, globalT: number): number {
-  const progress = hingeProgress(link.faceId, layout, globalT)
-  return progress * (Math.PI / 2) * link.sign
+// ---------------------------------------------------------------------------
+// Per-hinge progress (linear staircase: each face folds 0->1 within its fold-step slot)
+// ---------------------------------------------------------------------------
+
+function hingeProgress(faceId: FaceId, layout: UnfoldLayout, globalT: number): number {
+  const root = layout.anchorFace
+  if (faceId === root) return 0
+
+  const stepIndex = layout.foldSteps.findIndex((step) => step.pivotFace === faceId)
+  if (stepIndex < 0) return 0
+
+  const totalSteps = layout.foldSteps.length
+  const globalStep = globalT * totalSteps
+
+  if (globalStep >= stepIndex + 1) return 1
+  if (globalStep <= stepIndex) return 0
+  return globalStep - stepIndex
 }
 
+export function hingeAngle(link: HingeLink, layout: UnfoldLayout, globalT: number): number {
+  const progress = hingeProgress(link.faceId, layout, globalT)
+  return progress * HALF_PI * link.sign
+}
+
+/** @internal Legacy Euler-approximation helper (debug only; ignores nested parenting). */
 export function hingeRotation(link: HingeLink, layout: UnfoldLayout, globalT: number): [number, number, number] {
   const angle = hingeAngle(link, layout, globalT)
   if (link.edge === 'east' || link.edge === 'west') {
@@ -152,37 +219,101 @@ export function hingeRotation(link: HingeLink, layout: UnfoldLayout, globalT: nu
   return [angle, 0, 0]
 }
 
-export { hingePointVec, flatCenterVec, getLinks }
+// ---------------------------------------------------------------------------
+// Analytical sign resolution — the physically-correct fold direction
+// ---------------------------------------------------------------------------
 
-/** Explicit flat net — all faces on XZ plane, normals up. */
-export function computeFlatPoses(layout: UnfoldLayout): Record<FaceId, FacePose3D> {
-  return Object.fromEntries(
-    layout.cells.map((cell) => {
-      const pos = flatCenter(layout, cell.faceId)
-      return [
-        cell.faceId,
-        {
-          position: [pos.x, pos.y, pos.z],
-          rotation: [-Math.PI / 2, 0, 0],
-        },
-      ]
-    }),
-  ) as Record<FaceId, FacePose3D>
+/**
+ * Resolve each hinge's sign analytically. For every child there are exactly two ways
+ * to fold 90° about its world hinge axis (+90° or -90°); only one makes the child's
+ * outward normal reach CUBE_FACE_NORMALS[child]. We pick that one.
+ *
+ * Folded world quaternion of each face is accumulated in BFS order:
+ *   qChildWorld = qWorldFold · qParentWorld
+ * where qWorldFold = rotation about the (parent-folded) world hinge axis by sign·90°.
+ * For the anchor, qWorld = identity (it is pinned to the canonical front pose).
+ */
+function resolveHingeSignsAnalytical(layout: UnfoldLayout, links: HingeLink[]) {
+  const qByFace = new Map<FaceId, THREE.Quaternion>()
+  qByFace.set(layout.anchorFace, new THREE.Quaternion()) // identity
+
+  const localAxis = new THREE.Vector3()
+  const worldAxis = new THREE.Vector3()
+  const childNormal = new THREE.Vector3()
+  const qWorld = new THREE.Quaternion()
+  const qChildWorld = new THREE.Quaternion()
+
+  for (const link of links) {
+    const qParentWorld = qByFace.get(link.parent)!
+    localAxis.copy(hingeLocalAxis(link.edge))
+    // The world hinge axis is the parent's local edge tangent expressed in world space.
+    worldAxis.copy(localAxis).applyQuaternion(qParentWorld)
+
+    let bestSign = 1
+    let bestDot = -Infinity
+    let bestChildWorld = new THREE.Quaternion()
+
+    for (const sign of [1, -1]) {
+      qWorld.setFromAxisAngle(worldAxis, sign * HALF_PI)
+      qChildWorld.copy(qWorld).multiply(qParentWorld)
+      childNormal.set(0, 0, 1).applyQuaternion(qChildWorld)
+      const dot = childNormal.dot(CUBE_FACE_NORMALS[link.faceId])
+      if (dot > bestDot) {
+        bestDot = dot
+        bestSign = sign
+        bestChildWorld = qChildWorld.clone()
+      }
+    }
+
+    link.sign = bestSign
+    qByFace.set(link.faceId, bestChildWorld)
+  }
 }
 
-/** Edge direction in the parent face's local space (hinge line direction). */
-function hingeLocalAxis(edge: EdgeDir): THREE.Vector3 {
-  return edge === 'east' || edge === 'west'
-    ? new THREE.Vector3(0, 1, 0)
-    : new THREE.Vector3(1, 0, 0)
-}
+// ---------------------------------------------------------------------------
+// Scene graph (THREE.Object3D tree consumed by the renderer via objectToPose)
+// ---------------------------------------------------------------------------
 
-/** @internal Used by tests. */
+/** @internal Used by tests. Outward world normal of a face node (local +Z rotated). */
 export function faceWorldNormal(obj: THREE.Object3D): THREE.Vector3 {
   return new THREE.Vector3(0, 0, 1).applyQuaternion(obj.getWorldQuaternion(new THREE.Quaternion())).normalize()
 }
 
-/** @internal Used by tests. */
+/**
+ * Set a hinge's LOCAL quaternion so that, in world space, the child subtree rotates by
+ * `angle` about the REAL physical shared edge (the parent's edge tangent in world space).
+ *
+ * Unified formula (works for anchor children and nested children alike):
+ *   qWorld   = rotation about worldHingeAxis by `angle`
+ *   qHinge   = qParentWorld⁻¹ · qWorld · qParentWorld
+ *
+ * For the anchor, qParentWorld = identity, so qHinge = qWorld about the local axis —
+ * the same result the old anchor-only branch produced. For a nested child (e.g. `back`
+ * hinged on the already-folded `right`), this correctly rotates about right's folded
+ * east edge instead of a hardcoded world-Y axis.
+ *
+ * NOTE: `qParentWorld.clone().invert()` must clone first — `invert()` mutates in place
+ * and we still need the original qParentWorld for the trailing multiply.
+ */
+function setHingeRotation(
+  hinge: THREE.Object3D,
+  parentFace: THREE.Object3D,
+  link: HingeLink,
+  angle: number,
+) {
+  if (Math.abs(angle) < 1e-9) {
+    hinge.quaternion.identity()
+    return
+  }
+
+  parentFace.updateMatrixWorld(true)
+  const qParentWorld = parentFace.getWorldQuaternion(new THREE.Quaternion())
+  const worldHingeAxis = hingeLocalAxis(link.edge).clone().applyQuaternion(qParentWorld)
+  const qWorld = new THREE.Quaternion().setFromAxisAngle(worldHingeAxis, angle)
+  hinge.quaternion.copy(qParentWorld.clone().invert().multiply(qWorld).multiply(qParentWorld))
+}
+
+/** @internal Used by tests. Builds the THREE scene graph for a given fold progress. */
 export function buildFaceScene(
   layout: UnfoldLayout,
   links: HingeLink[],
@@ -193,12 +324,14 @@ export function buildFaceScene(
   const faceNodes: Partial<Record<FaceId, THREE.Object3D>> = {}
   const scene = new THREE.Object3D()
 
+  // Anchor: pinned to the canonical front pose (position [0,0,0.5], identity rotation).
   const rootFace = new THREE.Object3D()
   rootFace.position.copy(flatCenter(layout, root))
-  rootFace.quaternion.copy(FLAT_QUAT)
+  rootFace.quaternion.identity()
   scene.add(rootFace)
   faceNodes[root] = rootFace
 
+  // BFS traversal order (parents before children).
   const order: FaceId[] = [root]
   const queue = [root]
   while (queue.length > 0) {
@@ -216,15 +349,18 @@ export function buildFaceScene(
     const link = linkByChild.get(faceId)!
     const parentFace = faceNodes[link.parent]!
 
+    // Hinge node sits at the shared edge midpoint (parent local space).
     const hinge = new THREE.Object3D()
     hinge.position.copy(hingePoint(link.edge))
     parentFace.add(hinge)
 
     const progress = hingeProgress(faceId, layout, globalT)
-    const angle = progress * (Math.PI / 2) * link.sign
+    const angle = progress * HALF_PI * link.sign
+    // Refresh world matrices so setHingeRotation reads the parent's CURRENT folded pose.
     scene.updateMatrixWorld(true)
-    setHingeRotation(hinge, parentFace, link, angle, layout)
+    setHingeRotation(hinge, parentFace, link, angle)
 
+    // Face node sits on the far side of the hinge (one cell away from the parent center).
     const face = new THREE.Object3D()
     face.position.copy(hingePoint(link.edge))
     hinge.add(face)
@@ -235,125 +371,9 @@ export function buildFaceScene(
   return { scene, faceNodes: faceNodes as Record<FaceId, THREE.Object3D> }
 }
 
-function oppositeEastWestPenalty(links: HingeLink[]): number {
-  const byParent = new Map<FaceId, HingeLink[]>()
-  for (const link of links) {
-    if (link.edge !== 'west' && link.edge !== 'east') continue
-    const list = byParent.get(link.parent) ?? []
-    list.push(link)
-    byParent.set(link.parent, list)
-  }
-
-  let penalty = 0
-  for (const group of byParent.values()) {
-    const west = group.find((link) => link.edge === 'west')
-    const east = group.find((link) => link.edge === 'east')
-    if (west && east && west.sign === east.sign) penalty += 20
-  }
-  return penalty
-}
-
-function anchorNorthSouthSignPenalty(links: HingeLink[], layout: UnfoldLayout): number {
-  const anchor = layout.anchorFace
-  const north = links.find((link) => link.parent === anchor && link.edge === 'north')
-  const south = links.find((link) => link.parent === anchor && link.edge === 'south')
-  let penalty = 0
-  if (north && north.sign !== 1) penalty += 12
-  if (south && south.sign !== 1) penalty += 12
-  return penalty
-}
-
-function foldScore(layout: UnfoldLayout, links: HingeLink[]): number {
-  let score = 0
-
-  for (let stepIndex = 0; stepIndex < layout.foldSteps.length; stepIndex++) {
-    const pivot = layout.foldSteps[stepIndex]!.pivotFace
-    const t = (stepIndex + 1) / layout.foldSteps.length - 0.001
-    const { faceNodes } = buildFaceScene(layout, links, t)
-    const normal = faceWorldNormal(faceNodes[pivot])
-    const target = CUBE_FACE_NORMALS[pivot]
-    score += 2 * (1 - normal.dot(target))
-    if (pivot === 'left' || pivot === 'right') {
-      const y = faceNodes[pivot].getWorldPosition(new THREE.Vector3()).y
-      score += y < 0 ? 8 : 0
-    }
-    if (pivot === 'back') {
-      score += normal.dot(target) < 0.5 ? 8 : 0
-    }
-    if (pivot === 'bottom') {
-      const y = faceNodes[pivot].getWorldPosition(new THREE.Vector3()).y
-      score += y > 0 ? 8 : 0
-    }
-  }
-
-  const { faceNodes } = buildFaceScene(layout, links, 1)
-  for (const id of FACE_IDS) {
-    const normal = faceWorldNormal(faceNodes[id])
-    score += 1 - normal.dot(CUBE_FACE_NORMALS[id])
-  }
-
-  score += oppositeEastWestPenalty(links)
-  score += anchorNorthSouthSignPenalty(links, layout)
-  return score
-}
-
-
-function setHingeRotation(
-  hinge: THREE.Object3D,
-  parentFace: THREE.Object3D,
-  link: HingeLink,
-  angle: number,
-  layout: UnfoldLayout,
-) {
-  if (Math.abs(angle) < 1e-9) return
-
-  if (link.parent === layout.anchorFace) {
-    hinge.quaternion.setFromAxisAngle(hingeLocalAxis(link.edge), angle)
-    return
-  }
-
-  parentFace.updateMatrixWorld(true)
-  const parentWorldQuat = parentFace.getWorldQuaternion(new THREE.Quaternion())
-  const worldAxis = new THREE.Vector3(0, 1, 0)
-  const qWorld = new THREE.Quaternion().setFromAxisAngle(worldAxis, angle)
-  hinge.quaternion.copy(parentWorldQuat.clone().invert().multiply(qWorld).multiply(parentWorldQuat))
-}
-
-function resolveHingeSigns(layout: UnfoldLayout, links: HingeLink[]) {
-  const n = links.length
-  let bestScore = Infinity
-  let bestSigns: number[] = links.map(() => 1)
-
-  for (let mask = 0; mask < 1 << n; mask++) {
-    for (let i = 0; i < n; i++) {
-      links[i].sign = mask & (1 << i) ? -1 : 1
-    }
-    const score = foldScore(layout, links)
-    if (score < bestScore) {
-      bestScore = score
-      bestSigns = links.map((link) => link.sign)
-    }
-  }
-
-  for (let i = 0; i < n; i++) {
-    links[i].sign = bestSigns[i]!
-  }
-}
-
-function hingeProgress(faceId: FaceId, layout: UnfoldLayout, globalT: number): number {
-  const root = layout.anchorFace
-  if (faceId === root) return 0
-
-  const stepIndex = layout.foldSteps.findIndex((step) => step.pivotFace === faceId)
-  if (stepIndex < 0) return 0
-
-  const totalSteps = layout.foldSteps.length
-  const globalStep = globalT * totalSteps
-
-  if (globalStep >= stepIndex + 1) return 1
-  if (globalStep <= stepIndex) return 0
-  return globalStep - stepIndex
-}
+// ---------------------------------------------------------------------------
+// Pose extraction
+// ---------------------------------------------------------------------------
 
 function objectToPose(obj: THREE.Object3D): FacePose3D {
   const pos = new THREE.Vector3()
@@ -375,30 +395,35 @@ function computeHingePosesInternal(
   ) as Record<FaceId, FacePose3D>
 }
 
-function blendPoses(
-  from: Record<FaceId, FacePose3D>,
-  to: Record<FaceId, FacePose3D>,
-  alpha: number,
-): Record<FaceId, FacePose3D> {
-  const result = {} as Record<FaceId, FacePose3D>
-  for (const id of FACE_IDS) {
-    const a = from[id]
-    const b = to[id]
-    result[id] = {
-      position: [
-        a.position[0] + (b.position[0] - a.position[0]) * alpha,
-        a.position[1] + (b.position[1] - a.position[1]) * alpha,
-        a.position[2] + (b.position[2] - a.position[2]) * alpha,
-      ],
-      rotation: [
-        a.rotation[0] + (b.rotation[0] - a.rotation[0]) * alpha,
-        a.rotation[1] + (b.rotation[1] - a.rotation[1]) * alpha,
-        a.rotation[2] + (b.rotation[2] - a.rotation[2]) * alpha,
-      ],
-    }
-  }
-  return result
+/** Explicit flat net — vertical plane at Z=0.5, all faces facing +Z (camera). */
+export function computeFlatPoses(layout: UnfoldLayout): Record<FaceId, FacePose3D> {
+  return Object.fromEntries(
+    layout.cells.map((cell) => {
+      const pos = flatCenter(layout, cell.faceId)
+      return [
+        cell.faceId,
+        {
+          position: [pos.x, pos.y, pos.z],
+          rotation: [0, 0, 0],
+        },
+      ]
+    }),
+  ) as Record<FaceId, FacePose3D>
 }
+
+/** @internal Used by tests to evaluate custom hinge signs. */
+export function computeHingePosesWithLinks(
+  layout: UnfoldLayout,
+  links: HingeLink[],
+  globalT: number,
+): Record<FaceId, FacePose3D> {
+  if (globalT <= 0) return computeFlatPoses(layout)
+  return computeHingePosesInternal(layout, links, Math.min(1, globalT))
+}
+
+// ---------------------------------------------------------------------------
+// Cache + public entry
+// ---------------------------------------------------------------------------
 
 const hingeCache = new Map<UnfoldType, HingeLink[]>()
 
@@ -409,31 +434,31 @@ function getLinks(unfoldType: UnfoldType): HingeLink[] {
   return hingeCache.get(unfoldType)!
 }
 
+/**
+ * Main entry. Returns each face's {position, rotation} for a fold progress in [0,1].
+ *
+ *  - globalT <= 0 : vertical flat net (anchor pinned to front cube pose).
+ *  - 0 < t < 1    : pure rigid-hinge geometry, sequential per foldStep.
+ *  - t >= 1       : pure hinge geometry lands EXACTLY on layout.cubePoses (no snap/blend).
+ *
+ * `options.snapToCube` is accepted for backward compatibility but is a no-op.
+ */
 export function computeHingePoses(
   unfoldType: UnfoldType,
   globalT: number,
-  options: FoldPoseOptions = {},
+  _options: FoldPoseOptions = {},
 ): Record<FaceId, FacePose3D> {
-  const snapToCube = options.snapToCube ?? true
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
   if (globalT <= 0) return computeFlatPoses(layout)
 
   const links = getLinks(unfoldType)
   const t = Math.min(1, globalT)
-  const raw = computeHingePosesInternal(layout, links, t)
-
-  if (t >= 1) {
-    return layout.cubePoses
-  }
-
-  if (snapToCube && t > ALIGN_START) {
-    const alpha = (t - ALIGN_START) / (1 - ALIGN_START)
-    return blendPoses(raw, layout.cubePoses, alpha)
-  }
-
-  return raw
+  return computeHingePosesInternal(layout, links, t)
 }
 
+/** Flat 3D grid poses for the editor's unfold view. */
 export function computeUnfoldGrid3D(unfoldType: UnfoldType): Record<FaceId, FacePose3D> {
   return computeHingePoses(unfoldType, 0)
 }
+
+export { hingePointVec, flatCenterVec, getLinks }

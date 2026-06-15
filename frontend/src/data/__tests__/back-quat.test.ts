@@ -1,36 +1,46 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { buildFaceScene, buildHingeTreeRaw, faceWorldNormal } from '@/animation/foldHierarchy'
+import { buildFaceScene, buildHingeTree, faceWorldNormal } from '@/animation/foldHierarchy'
 import { UNFOLD_LAYOUTS } from '@/data/unfoldLayouts'
 
-function withSigns(bottomSign: number) {
+/**
+ * Regression tests for nested / vertical hinge orientation on T layout 1.
+ *
+ * The analytical sign resolver now derives (vertical-direct model):
+ *   back:   +1  (east of `right`; folds about right's folded east edge to -Z normal)
+ *   bottom: +1  (south of `front`; folds about the world-X edge to -Y normal)
+ * These tests pin those values and the resulting world normals/positions.
+ */
+describe('T layout hinge signs (analytical, vertical-direct model)', () => {
   const layout = UNFOLD_LAYOUTS[0]
-  const links = buildHingeTreeRaw(layout)
-  for (const link of links) {
-    if (link.faceId === 'left') link.sign = 1
-    else if (link.faceId === 'right') link.sign = -1
-    else if (link.faceId === 'top') link.sign = 1
-    else if (link.faceId === 'back') link.sign = -1
-    else if (link.faceId === 'bottom') link.sign = bottomSign
-    else link.sign = 1
-  }
-  return { layout, links }
-}
 
-describe('T layout hinge signs', () => {
-  it('back sign -1 faces -Z at step 3 end', () => {
-    const { layout, links } = withSigns(1)
-    const { faceNodes } = buildFaceScene(layout, links, 0.599)
-    const backN = faceWorldNormal(faceNodes.back)
-    expect(backN.dot(new THREE.Vector3(0, 0, -1))).toBeGreaterThan(0.9)
+  it('resolves back=+1 and bottom=+1', () => {
+    const links = buildHingeTree(layout)
+    const byId = Object.fromEntries(links.map((l) => [l.faceId, l.sign]))
+    expect(byId.back).toBe(1)
+    expect(byId.bottom).toBe(1)
   })
 
-  it('bottom sign +1 folds downward at step 5', () => {
-    const { layout: l1, links: k1 } = withSigns(1)
-    const { layout: l2, links: k2 } = withSigns(-1)
-    const downY = buildFaceScene(l1, k1, 0.999).faceNodes.bottom.getWorldPosition(new THREE.Vector3()).y
-    const upY = buildFaceScene(l2, k2, 0.999).faceNodes.bottom.getWorldPosition(new THREE.Vector3()).y
-    expect(downY).toBeLessThan(0)
-    expect(upY).toBeGreaterThan(0)
+  it('back face normal points -Z at the end of step 3 (nested hinge)', () => {
+    const links = buildHingeTree(layout)
+    const { faceNodes } = buildFaceScene(layout, links, 3 / 5 - 1e-3)
+    const backN = faceWorldNormal(faceNodes.back)
+    expect(backN.dot(new THREE.Vector3(0, 0, -1))).toBeGreaterThan(0.99)
+  })
+
+  it('bottom face ends below the cube center (world Y < 0) at step 5', () => {
+    const links = buildHingeTree(layout)
+    const { faceNodes } = buildFaceScene(layout, links, 1)
+    const y = faceNodes.bottom.getWorldPosition(new THREE.Vector3()).y
+    expect(y).toBeLessThan(-0.25)
+  })
+
+  it('back face lands at the cube back position [0,0,-0.5] at t=1', () => {
+    const links = buildHingeTree(layout)
+    const { faceNodes } = buildFaceScene(layout, links, 1)
+    const p = faceNodes.back.getWorldPosition(new THREE.Vector3())
+    expect(p.x).toBeCloseTo(0, 4)
+    expect(p.y).toBeCloseTo(0, 4)
+    expect(p.z).toBeCloseTo(-0.5, 4)
   })
 })
