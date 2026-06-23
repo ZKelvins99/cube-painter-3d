@@ -6,7 +6,18 @@ export type UnfoldType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11
 
 export type AppMode = 'unfold-edit' | '3d-view' | 'step-fold'
 
-export type EditorTool = 'select' | 'line' | 'polyline' | 'eraser' | 'shape'
+export type EditorTool =
+  | 'select'
+  | 'line'
+  | 'polyline'
+  | 'rectangle'
+  | 'circle'
+  | 'arrow'
+  | 'freehand'
+  | 'eraser'
+  | 'shape'
+
+export type DashStyle = 'solid' | 'dashed' | 'dotted'
 
 export interface FaceCanvasData {
   faceId: FaceId

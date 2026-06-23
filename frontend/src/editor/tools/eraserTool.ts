@@ -1,6 +1,9 @@
-import { Canvas, type TPointerEventInfo } from 'fabric'
+import type { TPointerEventInfo } from 'fabric'
+import type { ToolApi } from '@/editor/snapping'
 
-export function attachEraserTool(canvas: Canvas) {
+export function attachEraserTool(api: ToolApi) {
+  const { canvas } = api
+
   const onDown = (opt: TPointerEventInfo) => {
     const target = opt.target
     if (!target) return

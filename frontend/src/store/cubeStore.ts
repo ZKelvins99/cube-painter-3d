@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { stopFoldAnimation } from '@/animation/foldAnimation'
-import type { AppMode, CubeProject, EditorTool, FaceId, UnfoldType } from '@/types/cube'
+import type { AppMode, CubeProject, DashStyle, EditorTool, FaceId, UnfoldType } from '@/types/cube'
 import { FACE_IDS } from '@/types/cube'
 import { emptyFabricJson } from '@/lib/emptyFaceJson'
 
@@ -14,6 +14,11 @@ interface CubeState {
   foldProgress: number
   hoveredFace3d: FaceId | null
   faceTextureVersion: number
+  strokeColor: string
+  strokeWidth: number
+  dashStyle: DashStyle
+  showGrid: boolean
+  snapEnabled: boolean
   setMode: (m: AppMode) => void
   setUnfoldType: (t: UnfoldType) => void
   setActiveFace: (f: FaceId) => void
@@ -25,6 +30,11 @@ interface CubeState {
   setFoldProgress: (p: number) => void
   setHoveredFace3d: (f: FaceId | null) => void
   bumpFaceTextures: () => void
+  setStrokeColor: (c: string) => void
+  setStrokeWidth: (w: number) => void
+  setDashStyle: (d: DashStyle) => void
+  toggleGrid: () => void
+  toggleSnap: () => void
 }
 
 function createEmptyProject(name = '未命名练习'): CubeProject {
@@ -45,6 +55,11 @@ export const useCubeStore = create<CubeState>((set) => ({
   foldProgress: 0,
   hoveredFace3d: null,
   faceTextureVersion: 0,
+  strokeColor: '#111827',
+  strokeWidth: 3,
+  dashStyle: 'solid',
+  showGrid: true,
+  snapEnabled: true,
   setMode: (mode) => set({ mode }),
   setUnfoldType: (unfoldType) => {
     stopFoldAnimation()
@@ -78,4 +93,9 @@ export const useCubeStore = create<CubeState>((set) => ({
   setHoveredFace3d: (hoveredFace3d) => set({ hoveredFace3d }),
   bumpFaceTextures: () =>
     set((s) => ({ faceTextureVersion: s.faceTextureVersion + 1 })),
+  setStrokeColor: (strokeColor) => set({ strokeColor }),
+  setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
+  setDashStyle: (dashStyle) => set({ dashStyle }),
+  toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
+  toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
 }))

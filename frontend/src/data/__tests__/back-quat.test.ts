@@ -21,9 +21,9 @@ describe('T layout hinge signs (analytical, vertical-direct model)', () => {
     expect(byId.bottom).toBe(1)
   })
 
-  it('back face normal points -Z at the end of step 3 (nested hinge)', () => {
+  it('back face normal points -Z at the end of step 5 (nested hinge)', () => {
     const links = buildHingeTree(layout)
-    const { faceNodes } = buildFaceScene(layout, links, 3 / 5 - 1e-3)
+    const { faceNodes } = buildFaceScene(layout, links, 1 - 1e-3)
     const backN = faceWorldNormal(faceNodes.back)
     expect(backN.dot(new THREE.Vector3(0, 0, -1))).toBeGreaterThan(0.99)
   })

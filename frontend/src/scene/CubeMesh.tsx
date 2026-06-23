@@ -52,15 +52,14 @@ type CubeMeshProps = {
 
 export function CubeMesh({ canvases, textureVersion }: CubeMeshProps) {
   const unfoldType = useCubeStore((s) => s.unfoldType)
-  const mode = useCubeStore((s) => s.mode)
   const foldProgress = useCubeStore((s) => s.foldProgress)
   const setActiveFace = useCubeStore((s) => s.setActiveFace)
   const setHoveredFace3d = useCubeStore((s) => s.setHoveredFace3d)
 
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
   const poses = useMemo(
-    () => computeHingePoses(unfoldType, foldProgress, { snapToCube: mode !== 'step-fold' }),
-    [unfoldType, foldProgress, mode],
+    () => computeHingePoses(unfoldType, foldProgress),
+    [unfoldType, foldProgress],
   )
 
   const handleFaceClick = (faceId: FaceId) => (event: ThreeEvent<MouseEvent>) => {

@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cube Painter 3D - 学习工作赛道创意方案</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+    :root {
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-dark: #4f46e5;
+      --secondary: #06b6d4;
+      --accent: #f472b6;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f35 50%, var(--bg-dark) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero-section {
+      position: relative;
+      padding: 80px 20px 120px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      z-index: 0;
+    }
+
+    .cube-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 40px;
+      perspective: 800px;
+      z-index: 1;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: rotate 10s infinite linear;
+    }
+
+    @keyframes rotate {
+      0% { transform: rotateX(0deg) rotateY(0deg); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      border: 2px solid rgba(99, 102, 241, 0.3);
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .cube-face:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--primary);
+    }
+
+    .cube-face-front { transform: translateZ(100px); }
+    .cube-face-back { transform: rotateY(180deg) translateZ(100px); }
+    .cube-face-left { transform: rotateY(-90deg) translateZ(100px); }
+    .cube-face-right { transform: rotateY(90deg) translateZ(100px); }
+    .cube-face-top { transform: rotateX(90deg) translateZ(100px); }
+    .cube-face-bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+    .face-icon {
+      font-size: 48px;
+    }
+
+    .hero-title {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      z-index: 1;
+      position: relative;
+    }
+
+    .hero-subtitle {
+      font-size: 20px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+      z-index: 1;
+      position: relative;
+    }
+
+    .highlight-text {
+      color: var(--primary-light);
+      font-weight: 500;
+    }
+
+    .track-badge {
+      display: inline-block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--secondary);
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      padding: 6px 16px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-tagline {
+      font-size: 22px;
+      color: var(--text-primary);
+      max-width: 720px;
+      margin: 0 auto 12px;
+      line-height: 1.6;
+      z-index: 1;
+      position: relative;
+      font-weight: 500;
+    }
+
+    .dual-problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .dual-problem-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .dual-problem-card h4 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: var(--primary-light);
+    }
+
+    .card-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(244, 114, 182, 0.12);
+      border: 1px solid rgba(244, 114, 182, 0.3);
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .inspiration-box {
+      max-width: 800px;
+      margin: 40px auto 0;
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(244, 114, 182, 0.06) 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .inspiration-box p {
+      color: var(--text-secondary);
+      line-height: 1.9;
+      font-size: 15px;
+    }
+
+    .feature-item.coming-soon {
+      opacity: 0.85;
+      border: 1px dashed rgba(244, 114, 182, 0.4);
+      border-radius: 12px;
+      padding: 16px 8px;
+    }
+
+    .feature-item.coming-soon .feature-title {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 40px;
+      z-index: 1;
+      position: relative;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--primary-light);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .section {
+      padding: 60px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary);
+      box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      color: var(--primary-light);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .card-text {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .problem-section {
+      background: rgba(30, 41, 59, 0.5);
+      margin: 40px -20px;
+      padding: 60px 20px;
+    }
+
+    .problem-content {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .problem-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+      color: var(--accent);
+    }
+
+    .problem-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .problem-text {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    .timeline {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 100%;
+      background: var(--border-color);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding: 30px 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .timeline-item:nth-child(odd) {
+      flex-direction: row-reverse;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 16px;
+      height: 16px;
+      background: var(--primary);
+      border-radius: 50%;
+      border: 3px solid var(--bg-dark);
+      z-index: 1;
+    }
+
+    .timeline-content {
+      width: 45%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .timeline-content:hover {
+      border-color: var(--primary);
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.1);
+    }
+
+    .timeline-year {
+      font-size: 14px;
+      color: var(--primary-light);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .timeline-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .timeline-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .value-section {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+      margin: 40px -20px;
+      padding: 60px 20px;
+    }
+
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .value-card {
+      text-align: center;
+      padding: 32px;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .value-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--secondary);
+    }
+
+    .value-number {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 8px;
+    }
+
+    .value-label {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .value-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .footer {
+      padding: 40px 20px;
+      text-align: center;
+      border-top: 1px solid var(--border-color);
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .footer-link {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+
+    .feature-highlight {
+      background: linear-gradient(135deg, var(--bg-card) 0%, rgba(99, 102, 241, 0.05) 100%);
+      border-radius: 20px;
+      padding: 48px;
+      margin-bottom: 40px;
+      border: 1px solid var(--border-color);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 32px;
+      text-align: center;
+    }
+
+    .feature-item {
+      transition: all 0.3s ease;
+    }
+
+    .feature-item:hover {
+      transform: scale(1.05);
+    }
+
+    .feature-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      color: var(--primary-light);
+    }
+
+    .feature-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.1);
+    }
+
+    .stat-icon {
+      font-size: 32px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary-light);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 32px;
+      }
+
+      .hero-subtitle {
+        font-size: 16px;
+      }
+
+      .hero-tagline {
+        font-size: 18px;
+      }
+
+      .cube-container {
+        width: 150px;
+        height: 150px;
+      }
+
+      .cube-face {
+        width: 150px;
+        height: 150px;
+      }
+
+      .cube-face-front { transform: translateZ(75px); }
+      .cube-face-back { transform: rotateY(180deg) translateZ(75px); }
+      .cube-face-left { transform: rotateY(-90deg) translateZ(75px); }
+      .cube-face-right { transform: rotateY(90deg) translateZ(75px); }
+      .cube-face-top { transform: rotateX(90deg) translateZ(75px); }
+      .cube-face-bottom { transform: rotateX(-90deg) translateZ(75px); }
+
+      .nav-links {
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .timeline::before {
+        left: 24px;
+      }
+
+      .timeline-item {
+        flex-direction: column !important;
+        align-items: flex-start;
+      }
+
+      .timeline-dot {
+        left: 24px;
+      }
+
+      .timeline-content {
+        width: calc(100% - 48px);
+        margin-left: 48px;
+      }
+
+      .feature-highlight {
+        padding: 24px;
+      }
+
+      .feature-grid {
+        gap: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <section class="hero-section">
+    <div class="cube-container">
+      <div class="cube">
+        <div class="cube-face cube-face-front"><span class="face-icon">📐</span></div>
+        <div class="cube-face cube-face-back"><span class="face-icon">🧒</span></div>
+        <div class="cube-face cube-face-left"><span class="face-icon">✏️</span></div>
+        <div class="cube-face cube-face-right"><span class="face-icon">🎯</span></div>
+        <div class="cube-face cube-face-top"><span class="face-icon">✨</span></div>
+        <div class="cube-face cube-face-bottom"><span class="face-icon">🚀</span></div>
+      </div>
+    </div>
+    <div class="track-badge">【学习工作赛道】</div>
+    <h1 class="hero-title">Cube Painter 3D</h1>
+    <p class="hero-tagline">行测正方体与少儿空间思维的可视化学习工具</p>
+    <p class="hero-subtitle">在 2D 展开图与 3D 立方体之间自由切换，用<span class="highlight-text">画线、折叠、对照验证</span>，把抽象空间关系变成可操作的直觉——让空间想象，真正触手可及。</p>
+    <div class="nav-links">
+      <a href="#problem">核心问题</a>
+      <a href="#solution">解决方案</a>
+      <a href="#features">功能亮点</a>
+      <a href="#users">目标用户</a>
+      <a href="#value">价值意义</a>
+      <a href="#roadmap">发展规划</a>
+    </div>
+  </section>
+
+  <section class="section" id="problem">
+    <h2 class="section-title">核心问题</h2>
+    <div class="problem-section">
+      <div class="problem-content">
+        <div class="problem-icon">🧠</div>
+        <h3 class="problem-title">空间想象力，不该是少数人的天赋</h3>
+        <p class="problem-text" style="margin-bottom: 32px;">无论是公考行测里的「脑中折叠」，还是小学生几何启蒙时的「纸上画得出一转就懵」，本质都是同一道坎：展开图与立体图之间的空间关系，太抽象、太依赖天赋，太难被「看见」。</p>
+        <div class="dual-problem-grid">
+          <div class="dual-problem-card">
+            <h4>👨‍🎓 备考者的困境</h4>
+            <p class="card-text">行测正方体题的核心难点不是计算，而是「在脑中折叠」——面对展开图上的线条、对角线、十字等图元，很多人难以快速判断折叠后哪条线在哪个面。现有刷题多依赖静态图片和冗长文字解析，容易死记答案却缺乏真正理解。</p>
+          </div>
+          <div class="dual-problem-card">
+            <h4>🧒 小学生的困境</h4>
+            <p class="card-text">空间想象力是贯穿成长的核心能力，却常在小学阶段被忽视。孩子「纸上画得出、脑子里转不开」，家长想培养却找不到既专业又好玩、还能记录练习进度的工具——空间感成了「少数人天生会、多数人只能熬」的隐形门槛。</p>
+          </div>
+        </div>
+        <div class="inspiration-box">
+          <p>💡 <strong>创意灵感</strong>：备考行测时被正方体题反复「卡脖子」，深刻体会到空间感可以被训练；联想到自己小时候靠手指比划立体图形同样吃力——如果能把「折叠」做成动画、把「面与面的关系」做成可交互沙盘，或许不仅能帮考生提速，也能让小学生在趣味操作中提前种下空间思维的种子。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="solution">
+    <h2 class="section-title">解决方案</h2>
+    <p style="text-align: center; color: var(--text-secondary); max-width: 700px; margin: -20px auto 32px; line-height: 1.8;">一款基于 Web 的可视化学习网站：一端啃下行测这道「硬骨头」，一端向少儿空间启蒙自然延伸，打造「备考 + 启蒙」双轨数字空间实验室。</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3 class="card-title">画得出</h3>
+        <p class="card-text">在 6 个面上自由绘制线条、对角线、十字等行测常见图元，11 种标准展开图随心切换，模拟真实题面，也能为小朋友搭建趣味练习场景。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <h3 class="card-title">折得动</h3>
+        <p class="card-text">一键将 2D 展开图折叠为 3D 立方体，支持快速折叠与分步折叠动画——「这一面折向哪里」看得见，把脑内想象变成可操作的折叠过程。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👁️</div>
+        <h3 class="card-title">看得懂</h3>
+        <p class="card-text">3D 立方体自由旋转、缩放，双栏实时对照：左侧画线、右侧即时预览，从任意角度观察面与面的相邻、相对关系，建立可迁移的空间直觉。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌱</div>
+        <h3 class="card-title">练得会<span class="card-badge">规划中</span></h3>
+        <p class="card-text">后期推出少儿专属「空间训练营」：认识立方体 → 画线 → 看折叠 → 猜对面，趣味闯关循序渐进，让小学生在玩乐中系统锤炼空间想象力。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <h2 class="section-title">功能亮点</h2>
+    <div class="feature-highlight">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-icon">📝</div>
+          <h3 class="feature-title">6 面线稿编辑</h3>
+          <p class="feature-text">直线、折线、橡皮，精准绘制行测题面</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📐</div>
+          <h3 class="feature-title">11 种展开图</h3>
+          <p class="feature-text">覆盖行测常考全部标准展开图形态</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎬</div>
+          <h3 class="feature-title">分步折叠动画</h3>
+          <p class="feature-text">慢动作拆解折叠过程，每一步都看得清</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔧</div>
+          <h3 class="feature-title">行测图元库</h3>
+          <p class="feature-text">对角线、十字、三角等预设，快速构题</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📚</div>
+          <h3 class="feature-title">内置例题</h3>
+          <p class="feature-text">行测风格示例题一键加载，即开即练</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💾</div>
+          <h3 class="feature-title">本地保存</h3>
+          <p class="feature-text">无需登录，练习记录自动留存回顾</p>
+        </div>
+        <div class="feature-item coming-soon">
+          <div class="feature-icon">🎮</div>
+          <h3 class="feature-title">少儿空间训练营</h3>
+          <p class="feature-text">趣味闯关 · 渐进训练 · 成长记录（规划中）</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="users">
+    <h2 class="section-title">目标用户</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">👨‍🎓</div>
+        <h3 class="card-title">公考 / 事业编考生</h3>
+        <p class="card-text">行测「判断推理」中空间重构题正确率偏低、依赖死记解析的备考者。刷题时一键加载例题，画线、切换展开图、分步折叠对照验证，把「脑内折叠」变成可操作练习。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧒</div>
+        <h3 class="card-title">小学生</h3>
+        <p class="card-text">希望从小培养空间想象力、为后续数学几何与 STEM 学习打基础的孩子。课后在趣味互动中认识立方体、观察折叠、建立「展开—立体」直觉，后期通过专属训练营系统进阶。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👨‍👩‍👧</div>
+        <h3 class="card-title">家长与教师</h3>
+        <p class="card-text">需要可视化教具的家庭陪练与课堂教学场景。大屏双栏展示，边画边折边讲解，让抽象立体关系「动手折一遍就懂」，降低几何启蒙的畏难情绪。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👩‍🏫</div>
+        <h3 class="card-title">教培与教研</h3>
+        <p class="card-text">教培机构讲题老师与教研人员。用于课堂演示「展开—折叠—验证」全过程，提升教学效率；也可作为空间思维素质课的互动教具。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="value">
+    <h2 class="section-title">价值与意义</h2>
+    <div class="value-section">
+      <div class="value-grid">
+        <div class="value-card">
+          <div class="value-number">2</div>
+          <div class="value-label">条成长赛道</div>
+          <div class="value-text">公考刷题 + 少儿启蒙</div>
+        </div>
+        <div class="value-card">
+          <div class="value-number">0</div>
+          <div class="value-label">使用门槛</div>
+          <div class="value-text">无需登录，打开即用</div>
+        </div>
+        <div class="value-card">
+          <div class="value-number">11</div>
+          <div class="value-label">种展开图</div>
+          <div class="value-text">行测考点全覆盖</div>
+        </div>
+        <div class="value-card">
+          <div class="value-number">∞</div>
+          <div class="value-label">变式练习</div>
+          <div class="value-text">自由画线，无限可能</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid" style="margin-top: 40px;">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3 class="card-title">效率提升</h3>
+        <p class="card-text">将「脑内折叠」升级为 2D 画线 + 3D 实时预览 + 分步折叠动画，显著缩短单题理解时间。对小学生而言，把抽象立体关系变成「动手折一遍就懂」的体验，让空间思维训练可量化、可重复、可积累。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌍</div>
+        <h3 class="card-title">社会价值</h3>
+        <p class="card-text">打通「应试刚需」与「素质启蒙」：既为公考备考者提供普惠自助练习，也为小学生开辟低门槛的空间想象力成长路径。让缺乏空间天赋的孩子和考生，都能通过可视化沙盘公平地获得训练机会。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="roadmap">
+    <h2 class="section-title">发展规划</h2>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-year">Phase 1 · 进行中</div>
+          <div class="timeline-title">纯前端 MVP</div>
+          <div class="timeline-text">6 面线稿编辑、11 种展开图、快速/分步折叠动画、行测例题、IndexedDB 本地保存——核心「画—折—看」体验已落地。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-year">Phase 2 · 规划中</div>
+          <div class="timeline-title">少儿空间训练营</div>
+          <div class="timeline-text">面向小学生的趣味闯关模块：认识立方体、画线练习、折叠观察、猜对面挑战；渐进式关卡与成长记录，在玩乐中系统锤炼空间想象力。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-year">Phase 3 · 规划中</div>
+          <div class="timeline-title">云端题库与用户系统</div>
+          <div class="timeline-text">接入真题题库与错题本，支持题目搜索、学习进度统计；考生与少儿用户分轨管理，打造完整学习闭环。</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-year">Phase 4 · 规划中</div>
+          <div class="timeline-title">微信小程序</div>
+          <div class="timeline-text">移动端轻量化版本，支持随时随地刷题与空间训练，扩大用户覆盖面，验证产品价值后全面推广。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p class="footer-text">【学习工作赛道】Cube Painter 3D — 让空间想象触手可及<br>
+      <a href="https://github.com/ZKelvins99/cube-painter-3d" class="footer-link">GitHub</a> ·
+      <a href="/" class="footer-link">体验 Demo</a>
+    </p>
+  </footer>
+</body>
+</html>

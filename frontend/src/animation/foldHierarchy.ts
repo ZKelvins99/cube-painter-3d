@@ -40,15 +40,6 @@ const CUBE_FACE_NORMALS: Record<FaceId, THREE.Vector3> = {
   bottom: new THREE.Vector3(0, -1, 0),
 }
 
-export type FoldPoseOptions = {
-  /**
-   * Kept for API compatibility only. In the physical fold model there is nothing to
-   * snap — t=1 already lands exactly on cubePoses via pure hinge geometry — so this
-   * flag is now a no-op. CubeMesh/store/animation keep passing it; it is ignored.
-   */
-  snapToCube?: boolean
-}
-
 type EdgeDir = 'east' | 'west' | 'north' | 'south'
 
 export type HingeLink = {
@@ -202,7 +193,9 @@ function hingeProgress(faceId: FaceId, layout: UnfoldLayout, globalT: number): n
 
   if (globalStep >= stepIndex + 1) return 1
   if (globalStep <= stepIndex) return 0
-  return globalStep - stepIndex
+  // smoothstep easing within each step — zero velocity at step boundaries
+  const linear = globalStep - stepIndex
+  return linear * linear * (3 - 2 * linear)
 }
 
 export function hingeAngle(link: HingeLink, layout: UnfoldLayout, globalT: number): number {
@@ -283,21 +276,16 @@ export function faceWorldNormal(obj: THREE.Object3D): THREE.Vector3 {
  * Set a hinge's LOCAL quaternion so that, in world space, the child subtree rotates by
  * `angle` about the REAL physical shared edge (the parent's edge tangent in world space).
  *
- * Unified formula (works for anchor children and nested children alike):
+ * By the quaternion conjugation property, rotating about the world hinge axis is
+ * equivalent to rotating about the local axis by the same angle:
  *   qWorld   = rotation about worldHingeAxis by `angle`
- *   qHinge   = qParentWorld⁻¹ · qWorld · qParentWorld
+ *   qHinge   = qParentWorld⁻¹ · qWorld · qParentWorld = R(localAxis, angle)
  *
- * For the anchor, qParentWorld = identity, so qHinge = qWorld about the local axis —
- * the same result the old anchor-only branch produced. For a nested child (e.g. `back`
- * hinged on the already-folded `right`), this correctly rotates about right's folded
- * east edge instead of a hardcoded world-Y axis.
- *
- * NOTE: `qParentWorld.clone().invert()` must clone first — `invert()` mutates in place
- * and we still need the original qParentWorld for the trailing multiply.
+ * So we can directly set the local rotation about the local hinge axis — no world
+ * matrix updates or quaternion conjugation needed.
  */
 function setHingeRotation(
   hinge: THREE.Object3D,
-  parentFace: THREE.Object3D,
   link: HingeLink,
   angle: number,
 ) {
@@ -305,12 +293,7 @@ function setHingeRotation(
     hinge.quaternion.identity()
     return
   }
-
-  parentFace.updateMatrixWorld(true)
-  const qParentWorld = parentFace.getWorldQuaternion(new THREE.Quaternion())
-  const worldHingeAxis = hingeLocalAxis(link.edge).clone().applyQuaternion(qParentWorld)
-  const qWorld = new THREE.Quaternion().setFromAxisAngle(worldHingeAxis, angle)
-  hinge.quaternion.copy(qParentWorld.clone().invert().multiply(qWorld).multiply(qParentWorld))
+  hinge.quaternion.setFromAxisAngle(hingeLocalAxis(link.edge), angle)
 }
 
 /** @internal Used by tests. Builds the THREE scene graph for a given fold progress. */
@@ -356,9 +339,7 @@ export function buildFaceScene(
 
     const progress = hingeProgress(faceId, layout, globalT)
     const angle = progress * HALF_PI * link.sign
-    // Refresh world matrices so setHingeRotation reads the parent's CURRENT folded pose.
-    scene.updateMatrixWorld(true)
-    setHingeRotation(hinge, parentFace, link, angle)
+    setHingeRotation(hinge, link, angle)
 
     // Face node sits on the far side of the hinge (one cell away from the parent center).
     const face = new THREE.Object3D()
@@ -440,13 +421,10 @@ function getLinks(unfoldType: UnfoldType): HingeLink[] {
  *  - globalT <= 0 : vertical flat net (anchor pinned to front cube pose).
  *  - 0 < t < 1    : pure rigid-hinge geometry, sequential per foldStep.
  *  - t >= 1       : pure hinge geometry lands EXACTLY on layout.cubePoses (no snap/blend).
- *
- * `options.snapToCube` is accepted for backward compatibility but is a no-op.
  */
 export function computeHingePoses(
   unfoldType: UnfoldType,
   globalT: number,
-  _options: FoldPoseOptions = {},
 ): Record<FaceId, FacePose3D> {
   const layout = UNFOLD_LAYOUTS[unfoldType - 1]
   if (globalT <= 0) return computeFlatPoses(layout)

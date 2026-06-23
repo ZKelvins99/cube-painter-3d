@@ -1,9 +1,8 @@
 import { Canvas, Line, Polyline, Point, type TPointerEventInfo } from 'fabric'
-import { snap } from '@/editor/tools/lineTool'
+import type { ToolApi } from '@/editor/snapping'
 
-const STROKE = { stroke: '#111827', strokeWidth: 3, selectable: true }
-
-export function attachPolylineTool(canvas: Canvas) {
+export function attachPolylineTool(api: ToolApi) {
+  const { canvas, snap, showSnap, clearOverlay, getStroke } = api
   let points: Point[] = []
   let preview: Line | null = null
 
@@ -17,6 +16,7 @@ export function attachPolylineTool(canvas: Canvas) {
   const cancel = () => {
     points = []
     clearPreview()
+    clearOverlay()
     canvas.requestRenderAll()
   }
 
@@ -30,10 +30,11 @@ export function attachPolylineTool(canvas: Canvas) {
     canvas.add(
       new Polyline(
         points.map((p) => ({ x: p.x, y: p.y })),
-        { ...STROKE, fill: '' },
+        { ...getStroke(), fill: '', selectable: true },
       ),
     )
     points = []
+    clearOverlay()
     canvas.requestRenderAll()
   }
 
@@ -43,7 +44,7 @@ export function attachPolylineTool(canvas: Canvas) {
     const last = points[points.length - 1]
     if (!preview) {
       preview = new Line([last.x, last.y, x, y], {
-        ...STROKE,
+        ...getStroke(),
         selectable: false,
         evented: false,
         strokeDashArray: [6, 4],
@@ -63,7 +64,9 @@ export function attachPolylineTool(canvas: Canvas) {
     }
 
     const p = canvas.getPointer(opt.e)
-    const pt = new Point(snap(p.x), snap(p.y))
+    const s = snap(p.x, p.y)
+    showSnap(s.snapPoint)
+    const pt = new Point(s.x, s.y)
     if (points.length > 0) {
       const last = points[points.length - 1]
       if (last.x === pt.x && last.y === pt.y) return
@@ -76,7 +79,9 @@ export function attachPolylineTool(canvas: Canvas) {
   const onMove = (opt: TPointerEventInfo) => {
     if (points.length === 0) return
     const p = canvas.getPointer(opt.e)
-    updatePreview(snap(p.x), snap(p.y))
+    const s = snap(p.x, p.y)
+    showSnap(s.snapPoint)
+    updatePreview(s.x, s.y)
   }
 
   const onKeyDown = (e: KeyboardEvent) => {

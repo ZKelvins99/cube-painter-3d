@@ -1,9 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, type MutableRefObject } from 'react'
 import { Canvas } from 'fabric'
 import { SHAPES, type ShapeKey } from '@/editor/shapes'
+import { createToolApi, drawGrid, type ToolApi } from '@/editor/snapping'
 import { attachEraserTool } from '@/editor/tools/eraserTool'
 import { attachLineTool } from '@/editor/tools/lineTool'
 import { attachPolylineTool } from '@/editor/tools/polylineTool'
+import { attachRectangleTool } from '@/editor/tools/rectangleTool'
+import { attachCircleTool } from '@/editor/tools/circleTool'
+import { attachArrowTool } from '@/editor/tools/arrowTool'
+import { attachFreehandTool } from '@/editor/tools/freehandTool'
 import { emptyFabricJson } from '@/lib/emptyFaceJson'
 import { FACE_SIZE } from '@/lib/faceCanvas'
 import { useCubeStore } from '@/store/cubeStore'
@@ -34,7 +39,13 @@ async function loadFaceJson(
 }
 
 function applyToolMode(canvas: Canvas, tool: EditorTool) {
-  const isDrawTool = tool === 'line' || tool === 'polyline'
+  const isDrawTool =
+    tool === 'line' ||
+    tool === 'polyline' ||
+    tool === 'rectangle' ||
+    tool === 'circle' ||
+    tool === 'arrow' ||
+    tool === 'freehand'
   canvas.selection = tool === 'select' || tool === 'shape'
   canvas.skipTargetFind = isDrawTool
   canvas.defaultCursor = isDrawTool ? 'crosshair' : tool === 'eraser' ? 'pointer' : 'default'
@@ -54,6 +65,10 @@ function jsonEqual(a: object, b: object): boolean {
 
 export type FabricFaceCanvasHandle = {
   insertShape: (key: ShapeKey) => void
+  duplicateSelected: () => void
+  deleteSelected: () => void
+  bringForward: () => void
+  sendBackward: () => void
 }
 
 export interface FabricFaceCanvasProps {
@@ -64,8 +79,11 @@ export interface FabricFaceCanvasProps {
 
 export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCanvasProps>(
   function FabricFaceCanvas({ onCanvasReady, onFaceLoaded, isRestoringRef }, ref) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<Canvas | null>(null)
+  const toolApiRef = useRef<ToolApi | null>(null)
   const isLoadingRef = useRef(false)
   const activeFaceRef = useRef<FaceId>('front')
   const onCanvasReadyRef = useRef(onCanvasReady)
@@ -78,6 +96,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
   const activeFace = useCubeStore((s) => s.activeFace)
   const tool = useCubeStore((s) => s.tool)
   const projectId = useCubeStore((s) => s.project.id)
+  const showGrid = useCubeStore((s) => s.showGrid)
 
   useImperativeHandle(
     ref,
@@ -90,12 +109,52 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
         canvas.setActiveObject(shape)
         canvas.requestRenderAll()
       },
+      duplicateSelected() {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        const active = canvas.getActiveObject()
+        if (!active) return
+        active.clone().then((cloned: any) => {
+          cloned.set({ left: (active.left ?? 0) + 16, top: (active.top ?? 0) + 16 })
+          canvas.add(cloned)
+          canvas.setActiveObject(cloned)
+          canvas.requestRenderAll()
+        })
+      },
+      deleteSelected() {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        const active = canvas.getActiveObject()
+        if (!active) return
+        canvas.remove(active)
+        canvas.discardActiveObject()
+        canvas.requestRenderAll()
+      },
+      bringForward() {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        const active = canvas.getActiveObject()
+        if (!active) return
+        canvas.bringObjectForward(active)
+        canvas.requestRenderAll()
+      },
+      sendBackward() {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        const active = canvas.getActiveObject()
+        if (!active) return
+        canvas.sendObjectBackwards(active)
+        canvas.requestRenderAll()
+      },
     }),
     [],
   )
 
+  // 初始化画布 + ResizeObserver
   useEffect(() => {
     const el = canvasRef.current
+    const overlayEl = overlayRef.current
+    const containerEl = containerRef.current
     if (!el) return
 
     let canvas: Canvas
@@ -110,6 +169,16 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
       return
     }
     fabricRef.current = canvas
+
+    // 覆盖层 + 工具 API
+    const overlayCtx = overlayEl?.getContext('2d') ?? null
+    const toolApi = createToolApi(canvas, overlayCtx)
+    toolApiRef.current = toolApi
+
+    if (overlayCtx && useCubeStore.getState().showGrid) {
+      drawGrid(overlayCtx)
+    }
+
     onCanvasReadyRef.current?.(canvas)
 
     const { activeFace: initialFace, tool: initialTool, project } =
@@ -153,16 +222,38 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
       }
     })
 
+    // ---- 自适应尺寸：ResizeObserver ----
+    const resize = () => {
+      if (!containerEl) return
+      const rect = containerEl.getBoundingClientRect()
+      const size = Math.min(rect.width, rect.height)
+      if (size < 50) return
+      // 仅改 CSS 尺寸，内部分辨率保持 512×512
+      canvas.setDimensions({ width: size, height: size }, { cssOnly: true })
+      if (overlayEl) {
+        overlayEl.style.width = `${size}px`
+        overlayEl.style.height = `${size}px`
+      }
+    }
+    const ro = new ResizeObserver(resize)
+    if (containerEl) {
+      ro.observe(containerEl)
+      resize()
+    }
+
     return () => {
       disposed = true
+      ro.disconnect()
       canvas.off('object:added', persist)
       canvas.off('object:modified', persist)
       canvas.off('object:removed', persist)
       canvas.dispose()
       fabricRef.current = null
+      toolApiRef.current = null
     }
   }, [])
 
+  // 切换面
   useEffect(() => {
     const canvas = fabricRef.current
     if (!canvas) return
@@ -202,6 +293,7 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     return () => { disposed = true }
   }, [activeFace])
 
+  // 切换项目
   useEffect(() => {
     const canvas = fabricRef.current
     if (!canvas) return
@@ -229,24 +321,50 @@ export const FabricFaceCanvas = forwardRef<FabricFaceCanvasHandle, FabricFaceCan
     return () => { disposed = true }
   }, [projectId])
 
+  // 切换工具
   useEffect(() => {
     const canvas = fabricRef.current
-    if (!canvas) return
+    const api = toolApiRef.current
+    if (!canvas || !api) return
 
     applyToolMode(canvas, tool)
 
-    if (tool === 'line') return attachLineTool(canvas)
-    if (tool === 'polyline') return attachPolylineTool(canvas)
-    if (tool === 'eraser') return attachEraserTool(canvas)
+    if (tool === 'line') return attachLineTool(api)
+    if (tool === 'polyline') return attachPolylineTool(api)
+    if (tool === 'rectangle') return attachRectangleTool(api)
+    if (tool === 'circle') return attachCircleTool(api)
+    if (tool === 'arrow') return attachArrowTool(api)
+    if (tool === 'freehand') return attachFreehandTool(api)
+    if (tool === 'eraser') return attachEraserTool(api)
   }, [tool])
 
+  // 网格显示切换
+  useEffect(() => {
+    const overlayEl = overlayRef.current
+    if (!overlayEl) return
+    const ctx = overlayEl.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE)
+    if (showGrid) drawGrid(ctx)
+  }, [showGrid])
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={FACE_SIZE}
-      height={FACE_SIZE}
-      className="block max-w-full border border-slate-200"
-    />
+    <div ref={containerRef} className="relative flex h-full w-full items-center justify-center">
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          width={FACE_SIZE}
+          height={FACE_SIZE}
+          className="block border border-slate-200"
+        />
+        <canvas
+          ref={overlayRef}
+          width={FACE_SIZE}
+          height={FACE_SIZE}
+          className="pointer-events-none absolute left-0 top-0"
+        />
+      </div>
+    </div>
   )
 },
 )

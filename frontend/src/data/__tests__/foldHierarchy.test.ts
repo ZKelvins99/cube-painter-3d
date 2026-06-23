@@ -85,7 +85,7 @@ describe('computeHingePoses — flat state (t=0)', () => {
   it('hinge scene at rest (t≈0) reproduces the flat net for all layouts', () => {
     for (const layout of UNFOLD_LAYOUTS) {
       const flat = computeFlatPoses(layout)
-      const hinge = computeHingePoses(layout.id, 1e-10, { snapToCube: false })
+      const hinge = computeHingePoses(layout.id, 1e-10)
       for (const faceId of FACE_IDS) {
         const d = Math.hypot(
           flat[faceId].position[0] - hinge[faceId].position[0],
@@ -113,20 +113,6 @@ describe('computeHingePoses — continuity (no snap/blend)', () => {
       expect(d, `${faceId} continuity`).toBeLessThan(0.01)
     }
   })
-
-  it('ignores the legacy snapToCube flag (same result with or without)', () => {
-    const layout = UNFOLD_LAYOUTS[0]
-    const a = computeHingePoses(layout.id, 0.9, { snapToCube: false })
-    const b = computeHingePoses(layout.id, 0.9, { snapToCube: true })
-    for (const faceId of FACE_IDS) {
-      const d = Math.hypot(
-        a[faceId].position[0] - b[faceId].position[0],
-        a[faceId].position[1] - b[faceId].position[1],
-        a[faceId].position[2] - b[faceId].position[2],
-      )
-      expect(d, `${faceId} snap-invariant`).toBeLessThan(1e-6)
-    }
-  })
 })
 
 describe('T layout 1 — analytical signs & step-fold geometry', () => {
@@ -151,9 +137,9 @@ describe('T layout 1 — analytical signs & step-fold geometry', () => {
     expect(n.x).toBeCloseTo(-1, 4)
   })
 
-  it('after step 3 (back) the back face normal points -Z', () => {
+  it('after step 5 (back) the back face normal points -Z', () => {
     const links = buildHingeTree(layout)
-    const { faceNodes } = buildFaceScene(layout, links, 3 / 5 - 1e-3)
+    const { faceNodes } = buildFaceScene(layout, links, 1 - 1e-3)
     const n = faceWorldNormal(faceNodes.back)
     expect(n.z).toBeCloseTo(-1, 4)
   })

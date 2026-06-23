@@ -1,4 +1,4 @@
-import { Circle, Group, Line, Path } from 'fabric'
+import { Circle, Group, Line, Path, Rect } from 'fabric'
 import { FACE_SIZE } from '@/lib/faceCanvas'
 
 export type ShapeKey =
@@ -8,12 +8,18 @@ export type ShapeKey =
   | 'triangle'
   | 'threeDots'
   | 'semiArc'
+  | 'squareOutline'
+  | 'circleOutline'
+  | 'arrow'
+  | 'star'
+  | 'concentric'
+  | 'zigzag'
 
 const STROKE = '#111827'
 const STROKE_WIDTH = 3
 const HALF = 40
 
-function centeredGroup(objects: (Line | Circle | Path)[]) {
+function centeredGroup(objects: (Line | Circle | Path | Rect)[]) {
   const cx = FACE_SIZE / 2
   const cy = FACE_SIZE / 2
   return new Group(objects, {
@@ -33,8 +39,7 @@ function line(x1: number, y1: number, x2: number, y2: number) {
 }
 
 export const SHAPES: Record<ShapeKey, () => Group> = {
-  diagonal: () =>
-    centeredGroup([line(-HALF, -HALF, HALF, HALF)]),
+  diagonal: () => centeredGroup([line(-HALF, -HALF, HALF, HALF)]),
 
   cross: () =>
     centeredGroup([
@@ -70,6 +75,87 @@ export const SHAPES: Record<ShapeKey, () => Group> = {
         strokeWidth: STROKE_WIDTH,
       }),
     ]),
+
+  squareOutline: () =>
+    centeredGroup([
+      new Rect({
+        left: -HALF,
+        top: -HALF,
+        width: HALF * 2,
+        height: HALF * 2,
+        stroke: STROKE,
+        strokeWidth: STROKE_WIDTH,
+        fill: 'transparent',
+      }),
+    ]),
+
+  circleOutline: () =>
+    centeredGroup([
+      new Circle({
+        left: 0,
+        top: 0,
+        radius: HALF,
+        stroke: STROKE,
+        strokeWidth: STROKE_WIDTH,
+        fill: 'transparent',
+        originX: 'center',
+        originY: 'center',
+      }),
+    ]),
+
+  arrow: () =>
+    centeredGroup([
+      line(-HALF, 0, HALF - 8, 0),
+      new Path(`M ${HALF - 14} -8 L ${HALF} 0 L ${HALF - 14} 8`, {
+        fill: '',
+        stroke: STROKE,
+        strokeWidth: STROKE_WIDTH,
+      }),
+    ]),
+
+  star: () => {
+    const pts: [number, number][] = []
+    const outer = HALF
+    const inner = HALF * 0.4
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? outer : inner
+      const a = (Math.PI / 5) * i - Math.PI / 2
+      pts.push([Math.cos(a) * r, Math.sin(a) * r])
+    }
+    const segs = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
+    return centeredGroup([
+      new Path(`${segs} Z`, { fill: '', stroke: STROKE, strokeWidth: STROKE_WIDTH }),
+    ])
+  },
+
+  concentric: () =>
+    centeredGroup([
+      new Rect({
+        left: -HALF,
+        top: -HALF,
+        width: HALF * 2,
+        height: HALF * 2,
+        stroke: STROKE,
+        strokeWidth: STROKE_WIDTH,
+        fill: 'transparent',
+      }),
+      new Rect({
+        left: -HALF * 0.6,
+        top: -HALF * 0.6,
+        width: HALF * 1.2,
+        height: HALF * 1.2,
+        stroke: STROKE,
+        strokeWidth: STROKE_WIDTH,
+        fill: 'transparent',
+      }),
+    ]),
+
+  zigzag: () => {
+    const segs = [-HALF, -HALF / 2, 0, HALF / 2, HALF]
+      .map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${i % 2 === 0 ? -HALF / 2 : HALF / 2}`)
+      .join(' ')
+    return centeredGroup([new Path(segs, { fill: '', stroke: STROKE, strokeWidth: STROKE_WIDTH })])
+  },
 }
 
 export const SHAPE_LABELS: Record<ShapeKey, string> = {
@@ -79,4 +165,10 @@ export const SHAPE_LABELS: Record<ShapeKey, string> = {
   triangle: '三角',
   threeDots: '三点',
   semiArc: '半弧',
+  squareOutline: '方框',
+  circleOutline: '圆框',
+  arrow: '箭头',
+  star: '五角星',
+  concentric: '同心方',
+  zigzag: '锯齿',
 }
